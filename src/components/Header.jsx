@@ -1,5 +1,6 @@
 // src/components/Header.jsx
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { Menu, X, Search, User, ChevronDown } from "lucide-react";
 
 export default function Header() {
@@ -7,6 +8,13 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [language, setLanguage] = useState("EN");
+
+  const navItems = [
+    { label: "Home", path: "/" },
+    { label: "Category", path: "/category" },
+    { label: "About Us", path: "/about" },
+    { label: "Contact", path: "/contact" },
+  ];
 
   return (
     <header className="flex flex-wrap items-center justify-between px-4 md:px-8 py-4 bg-black text-white relative z-20">
@@ -20,14 +28,14 @@ export default function Header() {
       <div className="hidden md:flex items-center">
         {/* Nav closer to right */}
         <nav className="flex gap-4 items-center mr-24">
-          {["Home", "Categories", "About Us", "Contact"].map((label) => (
-            <a
-              key={label}
-              href="#"
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.path}
               className="border-2 border-white bg-black text-lg text-red-700 font-bold px-3 py-1 rounded hover:bg-gray-900 transition-colors"
             >
-              {label}
-            </a>
+              {item.label}
+            </Link>
           ))}
         </nav>
 
