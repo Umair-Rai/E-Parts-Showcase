@@ -2,17 +2,15 @@
 import React from 'react';
 import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2 } from 'lucide-react';
 
 const products = [
   {
     id: 1,
     name: 'Deluxe Cat Tree',
-    subtitle: 'Brown, 3 Levels',
-    price: 'SAR 120',
-    inStock: true,
-    category: 'Cat',
-    ProductCategory: 'Food',
+    model: ['A12','B12'],
+    size: ['50mm','60mm'],
+    category: 'Water Pump Parts',
     imageUrl: 'https://via.placeholder.com/60',
   },
   // Add more products here as needed...
@@ -70,10 +68,9 @@ export default function ViewAllProducts() {
               <th className="p-4"><input type="checkbox" /></th>
               <th className="p-4">Image</th>
               <th className="p-4">Product Name</th>
-              <th className="p-4">Price</th>
-              <th className="p-4">Stock Status</th>
+              <th className="p-4">Model</th>
+              <th className="p-4">Size</th>
               <th className="p-4">Category</th>
-              <th className="p-4">ProductCategory</th>
               <th className="p-4">Actions</th>
             </tr>
           </thead>
@@ -84,16 +81,14 @@ export default function ViewAllProducts() {
                 <td className="p-4"><img src={product.imageUrl} alt="Product" className="w-12 h-12 rounded object-cover" /></td>
                 <td className="p-4">
                   <div className="font-semibold">{product.name}</div>
-                  <div className="text-xs text-gray-500">{product.subtitle}</div>
+                  <div className="text-xs text-gray-500">{product.Model}</div>
                 </td>
-                <td className="p-4">{product.price}</td>
+                <td className="p-4">{product.model}</td>
                 <td className="p-4">
-                  <span className={`px-2 py-1 text-xs rounded-full ${product.inStock ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                    {product.inStock ? 'In Stock' : 'Out of Stock'}
+                  <span className='p-4'>{product.size}
                   </span>
                 </td>
                 <td className="p-4">{product.category}</td>
-                <td className="p-4">{product.ProductCategory}</td>
                 <td className="p-4">
                   <div className="flex gap-2 items-center">
                     <Link to={`/admin/update-product/${product.id}`}>

@@ -10,7 +10,6 @@ import {
 
 const infoCards = [
   { label: 'Total Products', value: 1247, Icon: CubeIcon },
-  { label: 'Orders', value: 892, Icon: ClipboardIcon },
   { label: 'Verified Sellers', value: 156, Icon: CheckCircleIcon },
   { label: 'Active Customers', value: 3421, Icon: UsersIcon },
 ];
@@ -18,7 +17,6 @@ const infoCards = [
 const actionCards = [
   { label: 'Add Product', Icon: PlusCircleIcon },
   { label: 'Verify Sellers', Icon: CheckCircleIcon },
-  { label: 'Monitor Orders', Icon: TruckIcon },
 ];
 
 const AdminDashboard = () => {

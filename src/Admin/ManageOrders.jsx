@@ -1,18 +1,18 @@
 import React from "react";
 import { Download, MoreVertical } from "lucide-react";
-import Button from "../components/Button";
-import Input from "../components/Input";
-import Select from "../components/Select";
-import Badge from "../components/Badge";
+import Button from "../Component/Button";
+import Input from "../Component/Input";
+import Select from "../Component/Select";
+import Badge from "../Component/Badge";
 
 const SellerVerification = () => {
   return (
     <div className="p-6 font-inter bg-gray-50 min-h-screen">
       {/* Page Title */}
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Seller Verification</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Manage Order</h1>
         <p className="text-sm text-gray-500">
-          Review and verify breeding service sellers applying to the platform.
+          Just Manage the orders applying to the platform.
         </p>
       </div>
 

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { EyeIcon, TrashIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
-import Select from '../components/Select';
-import Badge from '../components/Badge';
-import Input from '../components/Input';
+import Select from '../Component/Select';
+import Badge from '../Component/Badge';
+import Input from '../Component/Input';
 
 const customersData = [
   {

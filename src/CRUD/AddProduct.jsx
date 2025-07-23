@@ -3,9 +3,8 @@ import { Plus, Trash2, Upload, ChevronDown, ChevronRight } from 'lucide-react';
 
 const AddProduct = () => {
   const [images, setImages] = useState([]);
-  const [variants, setVariants] = useState([{ weight: '', price: '', stock: '' }]);
+  const [variants, setVariants] = useState([{ Model_Number: '', Size: '' }]);
   const [form, setForm] = useState({
-    petCategory: '',
     productCategory: '',
     productName: '',
     description: ''
@@ -57,19 +56,6 @@ const AddProduct = () => {
             <ChevronRight className="mr-1" /> Category Selection
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pet Category</label>
-              <select
-                className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
-                value={form.petCategory}
-                onChange={(e) => handleFormChange('petCategory', e.target.value)}
-              >
-                <option value="">Select pet category</option>
-                <option value="Cat">Cat</option>
-                <option value="Dog">Dog</option>
-              </select>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Product Category</label>
               <select
