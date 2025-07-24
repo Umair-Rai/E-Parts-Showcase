@@ -79,7 +79,7 @@ export default function Hero() {
 
       {/* Overlay Content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-20 px-4">
-        <h1 className="text-4xl md:text-5xl font-bold text-white">
+        <h1 className="text-4xl md:text-5xl font-bold text-red-700">
           Premium Quality Water Pump Parts
         </h1>
         <p className="text-lg md:text-xl text-gray-200 mt-4 max-w-2xl">
@@ -88,9 +88,6 @@ export default function Hero() {
         <div className="mt-6 flex flex-col sm:flex-row gap-4">
           <button className="bg-white text-slate-900 font-semibold px-6 py-3 rounded hover:bg-gray-200 transition-all">
             Browse Products
-          </button>
-          <button className="border border-white text-white font-semibold px-6 py-3 rounded hover:bg-white hover:text-slate-900 transition-all">
-            Contact Us
           </button>
         </div>
       </div>

@@ -20,8 +20,8 @@ export default function Header() {
     <header className="flex flex-wrap items-center justify-between px-4 md:px-8 py-4 bg-black text-white relative z-20">
       {/* Logo + Name */}
       <div className="flex items-center gap-2">
-        <img src="/logo.svg" alt="Logo" className="h-8 w-8 bg-white" />
-        <span className="font-semibold text-lg">Al Sayyeds Enterprise</span>
+        <img src="/logo.jpg" alt="Logo" className="h-10 w-20" />
+        <span className="font-semibold text-3xl">Al Sayyeds Enterprise</span>
       </div>
 
       {/* Desktop Navigation + Controls container */}
@@ -32,7 +32,7 @@ export default function Header() {
             <Link
               key={item.label}
               to={item.path}
-              className="border-2 border-white bg-black text-lg text-red-700 font-bold px-3 py-1 rounded hover:bg-gray-900 transition-colors"
+              className="border-4 border-white bg-black text-2xl text-red-700 font-bold px-3 py-1 rounded hover:bg-gray-900 transition-colors"
             >
               {item.label}
             </Link>
