@@ -92,7 +92,7 @@ function ProductCard({ product }) {
       className="
         bg-white
         rounded-xl
-        shadow-md
+        shadow-lg hover:shadow-red-800
         overflow-hidden
         transition-transform
         duration-300

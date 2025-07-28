@@ -1,4 +1,3 @@
-// src/components/Header.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, Search, User, ChevronDown } from "lucide-react";
@@ -24,15 +23,15 @@ export default function Header() {
         <span className="font-semibold text-3xl">Al Sayyeds Enterprise</span>
       </div>
 
-      {/* Desktop Navigation + Controls container */}
+      {/* Desktop Navigation */}
       <div className="hidden md:flex items-center">
-        {/* Nav closer to right */}
         <nav className="flex gap-4 items-center mr-24">
           {navItems.map((item) => (
             <Link
               key={item.label}
               to={item.path}
-              className="border-4 border-white bg-black text-2xl text-red-700 font-bold px-3 py-1 rounded hover:bg-gray-900 transition-colors"
+              className={`text-2xl font-bold px-4 py-1 transition-all duration-300 ${"text-red-700 hover:bg-red-700 hover:text-white hover:border-white border-2 border-transparent rounded-full"
+              }`}
             >
               {item.label}
             </Link>
@@ -46,9 +45,7 @@ export default function Header() {
             <button
               onClick={() => setSearchOpen(!searchOpen)}
               aria-label="Search"
-              className={`hover:text-gray-300 transition-transform duration-300 ${
-                searchOpen ? "translate-x-0" : ""
-              }`}
+              className="hover:text-gray-300"
             >
               <Search />
             </button>
@@ -67,7 +64,7 @@ export default function Header() {
             <User />
           </button>
 
-          {/* Language */}
+          {/* Language Dropdown */}
           <div className="relative">
             <button
               onClick={() => setLangOpen(!langOpen)}
@@ -77,7 +74,7 @@ export default function Header() {
               <ChevronDown className="w-4 h-4" />
             </button>
             {langOpen && (
-              <div className="absolute right-0 mt-2 w-24 bg-white text-black rounded shadow-lg">
+              <div className="absolute right-0 mt-2 w-24 bg-white text-black rounded shadow-lg z-30">
                 <button
                   onClick={() => {
                     setLanguage("EN");
@@ -113,16 +110,21 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {menuOpen && (
-        <div className="absolute top-16 left-0 w-full bg-gray-800 flex flex-col items-center gap-4 py-4 md:hidden">
-          {["Home", "Categories", "About Us", "Contact"].map((label) => (
-            <a
-              key={label}
-              href="#"
-              className="border border-white bg-black text-red-700 px-3 py-1 rounded w-11/12 text-center"
+        <div className="absolute top-16 left-0 w-full bg-gray-900 flex flex-col items-center gap-4 py-4 md:hidden z-40">
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.path}
+              className={`text-lg font-semibold px-4 py-1 w-11/12 text-center transition-all duration-300 ${
+                item.label === "Home"
+                  ? "bg-red-700 text-white border-2 border-white rounded-full"
+                  : "text-red-700 hover:bg-red-700 hover:text-white hover:border-white border-2 border-transparent rounded-full"
+              }`}
             >
-              {label}
-            </a>
+              {item.label}
+            </Link>
           ))}
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSearchOpen(!searchOpen)}
@@ -139,9 +141,11 @@ export default function Header() {
               />
             )}
           </div>
+
           <button className="hover:text-gray-300">
             <User />
           </button>
+
           <div className="relative">
             <button
               onClick={() => setLangOpen(!langOpen)}

@@ -59,7 +59,7 @@ export default function ProductCategories() {
             className={`group
               bg-white
               rounded-xl
-              shadow-md
+              shadow-lg hover:shadow-red-800
               overflow-hidden
               transition-all
               duration-500
@@ -89,7 +89,7 @@ export default function ProductCategories() {
               <p className="text-sm text-gray-500 mt-1">{cat.description}</p>
               <a
                 href="#"
-                className="inline-block mt-3 text-blue-600 hover:text-blue-800 transition-all text-sm font-medium"
+                className="inline-block mt-3 text-blue-600 hover:text-blue-800  transition-all text-sm font-medium"
               >
                 View Products →
               </a>
