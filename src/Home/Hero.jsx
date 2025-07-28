@@ -8,11 +8,12 @@ import "swiper/css/effect-fade";
 
 export default function Hero() {
   const slides = [
-    "https://source.unsplash.com/1600x900/?water-pump",
-    "https://source.unsplash.com/1600x900/?industrial",
-    "https://source.unsplash.com/1600x900/?machinery",
-    "https://source.unsplash.com/1600x900/?factory",
-    "https://source.unsplash.com/1600x900/?mechanical",
+    "/home/p1.jpg",
+    "/home/p2.jpg",
+    "/home/p3.jpg",
+    "/home/p4.jpg",
+    "/home/p5.jpg",
+    "/home/p6.jpg",
   ];
 
   return (
@@ -35,13 +36,13 @@ export default function Hero() {
       >
         {slides.map((url, index) => (
           <SwiperSlide key={index}>
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{
-                backgroundImage: `url(${url})`,
-              }}
-            >
-              <div className="absolute inset-0 bg-black/40"></div>
+            <div className="h-full w-full">
+              <img
+                src={url}
+                alt={`Slide ${index + 1}`}
+                className="w-full h-full object-contain object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-black/40 z-10"></div>
             </div>
           </SwiperSlide>
         ))}
@@ -79,10 +80,10 @@ export default function Hero() {
 
       {/* Overlay Content */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-20 px-4">
-        <h1 className="text-4xl md:text-5xl font-bold text-red-700">
+        <h1 className="text-4xl md:text-5xl font-bold text-red-700 drop-shadow-md">
           Premium Quality Water Pump Parts
         </h1>
-        <p className="text-lg md:text-xl text-gray-200 mt-4 max-w-2xl">
+        <p className="text-lg md:text-xl text-gray-200 mt-4 max-w-2xl drop-shadow-sm">
           Supplier of high-quality mechanical and electrical water pump components for industrial applications.
         </p>
         <div className="mt-6 flex flex-col sm:flex-row gap-4">
