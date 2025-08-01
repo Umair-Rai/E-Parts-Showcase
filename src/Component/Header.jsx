@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link , useNavigate } from "react-router-dom";
 import { Menu, X, Search, User, ChevronDown } from "lucide-react";
+import Login from "../Login and Signup/Login";
 
 export default function Header() {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -60,8 +62,11 @@ export default function Header() {
           </div>
 
           {/* User */}
-          <button className="hover:text-gray-300">
+          <button className="hover:text-gray-300 flex items-center space-x-2"
+                  onClick={() => navigate('/login')}>
+
             <User />
+           
           </button>
 
           {/* Language Dropdown */}

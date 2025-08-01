@@ -7,7 +7,7 @@ import Category from "./Pages/Category";
 import About from "./Pages/About";
 import Admin from "./Pages/admin";
 import AddProduct from "./CRUD/AddProduct";
-
+import Login from "./Login and Signup/Login";
 function App() {
   return (
     <Router>
@@ -21,6 +21,7 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/add-product" element={<AddProduct />} />
+            <Route path="/login" element={<Login />} />
             {/* Add more routes here */}
           </Routes>
         </main>
