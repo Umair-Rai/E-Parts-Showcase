@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link , useNavigate } from "react-router-dom";
 import { Menu, X, Search, User, ChevronDown } from "lucide-react";
-import Login from "../Login and Signup/Login";
+import Login from "../Pages/Auth/Login";
+import Signup from "../Pages/Auth/Signup";
 
 export default function Header() {
   const navigate = useNavigate();

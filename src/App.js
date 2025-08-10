@@ -2,12 +2,14 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./Component/Header";
 import Footer from "./Component/Footer";
-import Home from "./Pages/Home";
-import Category from "./Pages/Category";
-import About from "./Pages/About";
-import Admin from "./Pages/admin";
-import AddProduct from "./CRUD/AddProduct";
-import Login from "./Login and Signup/Login";
+import Home from "./Pages/Home/Home";
+import Category from "./Pages/Category/Category";
+import About from "./Pages/About/About";
+import Admin from "./Pages/Admin/admin";
+import AddProduct from "./Pages/CRUD/AddProduct";
+import Login from "./Pages/Auth/Login";
+import Signup from "./Pages/Auth/Signup";
+
 function App() {
   return (
     <Router>
@@ -22,6 +24,7 @@ function App() {
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/add-product" element={<AddProduct />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             {/* Add more routes here */}
           </Routes>
         </main>
