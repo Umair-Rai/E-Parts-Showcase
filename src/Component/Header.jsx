@@ -14,7 +14,7 @@ export default function Header() {
   const navItems = [
     { label: "Home", path: "/" },
     { label: "Category", path: "/category" },
-    { label: "Products", path: "/products" },
+    { label: "Products", path: "/product" },
     { label: "About Us", path: "/about" },
   ];
 

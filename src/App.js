@@ -9,7 +9,7 @@ import Admin from "./Pages/Admin/admin";
 import AddProduct from "./Pages/CRUD/AddProduct";
 import Login from "./Pages/Auth/Login";
 import Signup from "./Pages/Auth/Signup";
-import Product from "./Pages/Product/Product";
+import ProductCatalog from "./Pages/Product/pro";
 
 function App() {
   return (
@@ -22,7 +22,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/category" element={<Category />} />
             <Route path="/about" element={<About />} />
-            <Route path="/products" element={<Product />} />
+            <Route path="/product" element={<ProductCatalog />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/add-product" element={<AddProduct />} />
             <Route path="/login" element={<Login />} />

@@ -1,18 +1,57 @@
-// src/pages/Login.jsx
-import React from "react";
+import React, { useState } from "react";
 import Button from "../../Component/Button";
 import Input from "../../Component/Input";
 import Label from "../../Component/Label";
 import Card, { CardHeader, CardTitle, CardContent } from "../../Component/Card";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import axios from "axios";
 
 const Login = () => {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  const handleChange = (e) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // login logic here
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await axios.post("http://localhost:5000/api/auth/login", {
+        email: formData.email,
+        password: formData.password,
+        role: "customer",
+
+      });
+
+      if (response.status === 200) {
+        // Save token (if returned) to localStorage or context (adjust as per your backend)
+        localStorage.setItem("token", response.data.token);
+        // Redirect to dashboard or home page
+        navigate("/dashboard");
+      } else {
+        setError("Login failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Something went wrong. Please try again.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -34,20 +73,40 @@ const Login = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-5">
+              {error && (
+                <p className="text-red-600 text-center font-semibold">{error}</p>
+              )}
               <div>
                 <Label htmlFor="email" className="text-gray-700 font-bold">
                   Email
                 </Label>
-                <Input type="email" id="email" required placeholder="you@example.com" />
+                <Input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  placeholder="you@example.com"
+                />
               </div>
               <div>
                 <Label htmlFor="password" className="text-gray-700 font-bold">
                   Password
                 </Label>
-                <Input type="password" id="password" required placeholder="••••••••" className="text-gray-700" />
+                <Input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="••••••••"
+                  className="text-gray-700"
+                />
               </div>
-              <Button type="submit" className="w-full">
-                Login
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Logging in..." : "Login"}
               </Button>
               <div className="text-center text-sm text-gray-500 mt-3">
                 Don’t have an account?{" "}

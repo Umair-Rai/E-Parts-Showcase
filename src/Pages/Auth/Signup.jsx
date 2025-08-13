@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import Button from "../../Component/Button";
 import Input from "../../Component/Input";
 import Label from "../../Component/Label";
@@ -14,6 +15,8 @@ const Signup = () => {
     phone: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -22,9 +25,37 @@ const Signup = () => {
     }));
   };
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    // Signup logic here
+    setLoading(true);
+    setError("");
+
+    try {
+      // Backend expects `number` field for phone and `role` as 'customer'
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        number: formData.phone,
+        password: formData.password,
+        role: "customer",
+      };
+
+      const response = await axios.post("http://localhost:5000/api/auth/register", payload);
+
+      if (response.status === 201) {
+        // Successfully registered, redirect to login
+        navigate("/login");
+      } else {
+        setError("Failed to register. Please try again.");
+      }
+    } catch (err) {
+        console.error("Signup error:", err.response || err.message || err);
+        setError(
+          err.response?.data?.error || "Something went wrong. Please try again."
+        );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,12 +72,18 @@ const Signup = () => {
 
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-5">
+            {error && (
+              <p className="text-red-600 text-center font-semibold">{error}</p>
+            )}
+
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Label htmlFor="name" className="text-gray-700 font-bold">Name</Label>
+              <Label htmlFor="name" className="text-gray-700 font-bold">
+                Name
+              </Label>
               <Input
                 id="name"
                 name="name"
@@ -62,7 +99,9 @@ const Signup = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Label htmlFor="email" className="text-gray-700 font-bold">Email</Label>
+              <Label htmlFor="email" className="text-gray-700 font-bold">
+                Email
+              </Label>
               <Input
                 id="email"
                 name="email"
@@ -79,7 +118,9 @@ const Signup = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Label htmlFor="phone" className="text-gray-700 font-bold">Phone</Label>
+              <Label htmlFor="phone" className="text-gray-700 font-bold">
+                Phone
+              </Label>
               <Input
                 id="phone"
                 name="phone"
@@ -96,7 +137,9 @@ const Signup = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Label htmlFor="password" className="text-gray-700 font-bold">Password</Label>
+              <Label htmlFor="password" className="text-gray-700 font-bold">
+                Password
+              </Label>
               <Input
                 id="password"
                 name="password"
@@ -113,8 +156,8 @@ const Signup = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <Button type="submit" className="w-full">
-                Sign Up
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Signing Up..." : "Sign Up"}
               </Button>
               <div className="text-center text-sm text-gray-500 mt-3">
                 Already have an account?{" "}
