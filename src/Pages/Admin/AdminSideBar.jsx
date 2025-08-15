@@ -32,7 +32,7 @@ export default function AdminSideBar() {
             onClick={() => setActiveNav(label)}
             className={`flex items-center space-x-3 px-4 py-2 rounded-lg mb-2 cursor-pointer transition-all duration-200 ease-in-out ${
               activeNav === label
-                ? 'bg-purple-100 text-purple-600 font-semibold'
+                ? 'bg-red-100 text-red-600 font-semibold'
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
           >

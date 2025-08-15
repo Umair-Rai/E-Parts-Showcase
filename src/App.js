@@ -9,7 +9,10 @@ import Admin from "./Pages/Admin/admin";
 import AddProduct from "./Pages/CRUD/AddProduct";
 import Login from "./Pages/Auth/Login";
 import Signup from "./Pages/Auth/Signup";
-import ProductCatalog from "./Pages/Product/pro";
+import ProductCatalog from "./Pages/Product/product";
+import AdminLogin from "./Pages/Admin/Adminlogin";
+
+
 
 function App() {
   return (
@@ -27,6 +30,7 @@ function App() {
             <Route path="/admin/add-product" element={<AddProduct />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
             {/* Add more routes here */}
           </Routes>
         </main>
