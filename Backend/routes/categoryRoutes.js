@@ -20,7 +20,7 @@ router.post(
   '/',
   [
     body('name').notEmpty(),
-    body('pic').optional().isString(),
+    body('pic').optional().isArray(), // changed from isString() to isArray()
     body('specialCategory').optional().isBoolean(),
     validateRequest,
   ],
@@ -32,7 +32,7 @@ router.put(
   [
     param('id').isInt(),
     body('name').notEmpty(),
-    body('pic').optional().isString(),
+    body('pic').optional().isArray(), // changed from isString() to isArray()
     body('specialCategory').optional().isBoolean(),
     validateRequest,
   ],

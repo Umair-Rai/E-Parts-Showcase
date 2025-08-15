@@ -1,11 +1,15 @@
 const asyncHandler = require('express-async-handler');
 const pool = require('../config/db');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
+// Get all admins
 const getAllAdmins = asyncHandler(async (req, res) => {
   const result = await pool.query('SELECT id, name, email, role FROM admin');
   res.json(result.rows);
 });
 
+// Get admin by ID
 const getAdminById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const result = await pool.query('SELECT id, name, email, role FROM admin WHERE id = $1', [id]);
@@ -18,6 +22,7 @@ const getAdminById = asyncHandler(async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Update admin
 const updateAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, email, password, role } = req.body;
@@ -35,7 +40,6 @@ const updateAdmin = asyncHandler(async (req, res) => {
     values.push(email);
   }
   if (password) {
-    const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 10);
     fields.push(`password = $${idx++}`);
     values.push(hashedPassword);
@@ -63,12 +67,41 @@ const updateAdmin = asyncHandler(async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Delete admin
 const deleteAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;
-
   await pool.query('DELETE FROM admin WHERE id = $1', [id]);
-
   res.json({ message: 'Admin deleted successfully' });
+});
+
+// Admin login
+const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const result = await pool.query('SELECT * FROM admin WHERE email = $1', [email]);
+  const admin = result.rows[0];
+
+  if (!admin) {
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
+  const isPasswordMatch = await bcrypt.compare(password, admin.password);
+  if (!isPasswordMatch) {
+    res.status(401);
+    throw new Error('Invalid email or password');
+  }
+
+  const token = jwt.sign(
+    { id: admin.id, role: admin.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' }
+  );
+
+  res.json({
+    token,
+    admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role },
+  });
 });
 
 module.exports = {
@@ -76,4 +109,5 @@ module.exports = {
   getAdminById,
   updateAdmin,
   deleteAdmin,
+  login, // <-- make sure login is exported
 };

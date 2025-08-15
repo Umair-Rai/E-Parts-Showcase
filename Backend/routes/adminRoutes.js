@@ -6,6 +6,18 @@ const adminController = require('../controllers/adminController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { validateRequest } = require('../middleware/validate');
 
+// Public route: login should NOT require auth
+router.post(
+  '/login',
+  [
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('password').notEmpty().withMessage('Password is required'),
+    validateRequest,
+  ],
+  adminController.login
+);
+
+// Protected routes: only authenticated admins can access
 router.use(requireAuth);
 
 router.get('/', adminController.getAllAdmins);

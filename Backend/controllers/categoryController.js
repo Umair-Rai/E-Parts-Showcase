@@ -1,6 +1,13 @@
 const asyncHandler = require('express-async-handler');
 const pool = require('../config/db');
 
+// 📌 Helper: Ensure value is always an array
+const ensureArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return value.split(',').map((v) => v.trim());
+};
+
 const getAllCategories = asyncHandler(async (req, res) => {
   const result = await pool.query('SELECT * FROM category');
   res.json(result.rows);
@@ -21,10 +28,12 @@ const getCategoryById = asyncHandler(async (req, res) => {
 const createCategory = asyncHandler(async (req, res) => {
   const { name, pic, specialCategory } = req.body;
 
+  const picArray = ensureArray(pic);
+
   const query =
     'INSERT INTO category (name, pic, special_category) VALUES ($1, $2, $3) RETURNING *';
 
-  const result = await pool.query(query, [name, pic, specialCategory]);
+  const result = await pool.query(query, [name, picArray, specialCategory]);
   res.status(201).json(result.rows[0]);
 });
 
@@ -32,10 +41,12 @@ const updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, pic, specialCategory } = req.body;
 
+  const picArray = ensureArray(pic);
+
   const query =
     'UPDATE category SET name = $1, pic = $2, special_category = $3 WHERE id = $4 RETURNING *';
 
-  const result = await pool.query(query, [name, pic, specialCategory, id]);
+  const result = await pool.query(query, [name, picArray, specialCategory, id]);
 
   if (result.rows.length === 0) {
     res.status(404);
