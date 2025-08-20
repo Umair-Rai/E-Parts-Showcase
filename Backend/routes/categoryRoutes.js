@@ -5,9 +5,9 @@ const { body, param } = require('express-validator');
 const categoryController = require('../controllers/categoryController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { validateRequest } = require('../middleware/validate');
+const { uploadCategoryImages, handleUploadError } = require('../middleware/uploadMiddleware');
 
-router.use(requireAuth);
-
+// Public routes (no authentication required)
 router.get('/', categoryController.getAllCategories);
 
 router.get(
@@ -16,11 +16,14 @@ router.get(
   categoryController.getCategoryById
 );
 
+// Protected routes (authentication required)
 router.post(
   '/',
+  requireAuth,
+  uploadCategoryImages,
+  handleUploadError,
   [
     body('name').notEmpty(),
-    body('pic').optional().isArray(), // changed from isString() to isArray()
     body('specialCategory').optional().isBoolean(),
     validateRequest,
   ],
@@ -29,10 +32,12 @@ router.post(
 
 router.put(
   '/:id',
+  requireAuth,
+  uploadCategoryImages,
+  handleUploadError,
   [
     param('id').isInt(),
     body('name').notEmpty(),
-    body('pic').optional().isArray(), // changed from isString() to isArray()
     body('specialCategory').optional().isBoolean(),
     validateRequest,
   ],
@@ -41,6 +46,7 @@ router.put(
 
 router.delete(
   '/:id',
+  requireAuth,
   [param('id').isInt(), validateRequest],
   categoryController.deleteCategory
 );

@@ -26,28 +26,37 @@ const getCategoryById = asyncHandler(async (req, res) => {
 });
 
 const createCategory = asyncHandler(async (req, res) => {
-  const { name, pic, specialCategory } = req.body;
-
-  const picArray = ensureArray(pic);
-
+  const { name, specialCategory } = req.body;
+  
+  // Handle uploaded files
+  const picArray = req.files ? req.files.map(file => `/uploads/categories/${file.filename}`) : [];
+  
   const query =
     'INSERT INTO category (name, pic, special_category) VALUES ($1, $2, $3) RETURNING *';
 
-  const result = await pool.query(query, [name, picArray, specialCategory]);
+  const result = await pool.query(query, [name, picArray, specialCategory === 'true']);
   res.status(201).json(result.rows[0]);
 });
 
 const updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, pic, specialCategory } = req.body;
+  const { name, specialCategory } = req.body;
 
-  const picArray = ensureArray(pic);
+  // Handle uploaded files - if new files uploaded, use them; otherwise keep existing
+  let picArray;
+  if (req.files && req.files.length > 0) {
+    picArray = req.files.map(file => `/uploads/categories/${file.filename}`);
+  } else {
+    // Keep existing images if no new files uploaded
+    const existing = await pool.query('SELECT pic FROM category WHERE id = $1', [id]);
+    picArray = existing.rows[0]?.pic || [];
+  }
 
   const query =
     'UPDATE category SET name = $1, pic = $2, special_category = $3 WHERE id = $4 RETURNING *';
 
-  const result = await pool.query(query, [name, picArray, specialCategory, id]);
-
+  const result = await pool.query(query, [name, picArray, specialCategory === 'true', id]);
+  
   if (result.rows.length === 0) {
     res.status(404);
     throw new Error('Category not found');
