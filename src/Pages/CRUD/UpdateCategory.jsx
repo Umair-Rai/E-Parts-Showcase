@@ -56,18 +56,33 @@ const UpdateCategory = () => {
         const categoryData = response.data;
         console.log('📋 Fetched category data:', categoryData);
         
-        // Helper function to safely handle category images
+        // Enhanced helper function to safely handle category images with Postgres TEXT[] support
         const getCategoryImages = (category) => {
-          if (!category.pic) return [];
-          if (Array.isArray(category.pic)) return category.pic;
-          if (typeof category.pic === 'string') {
-            try {
-              return JSON.parse(category.pic);
-            } catch {
-              return [category.pic];
-            }
+          console.log('🔍 Processing category images for:', category.name, category.pic);
+          
+          if (!category.pic) {
+            console.log('⚠️ No pic field found for category:', category.name);
+            return [];
           }
-          return [];
+          
+          let imageArray = [];
+          
+          if (Array.isArray(category.pic)) {
+            // Already a JS array ✅
+            imageArray = category.pic;
+            console.log('📋 Found array of images:', imageArray);
+          } else if (typeof category.pic === 'string') {
+            // Handle Postgres TEXT[] format like: {"url1","url2"}
+            imageArray = category.pic
+              .replace(/[{}]/g, "")   // Remove curly braces
+              .replace(/"/g, "")     // Remove quotation marks
+              .split(",")            // Split string by commas
+              .map((v) => v.trim());  // Trim whitespace from each element
+            
+            console.log('📋 Parsed Postgres TEXT[] images:', imageArray);
+          }
+          
+          return imageArray;
         };
 
         const existingImages = getCategoryImages(categoryData);
@@ -94,7 +109,7 @@ const UpdateCategory = () => {
           toast.error('Failed to load category data');
         }
         
-        navigate('/admin/categories');
+        navigate('/admin');
       } finally {
         setFetchLoading(false);
       }
@@ -205,7 +220,7 @@ const UpdateCategory = () => {
       
       // Navigate back to categories list after a short delay
       setTimeout(() => {
-        navigate('/admin/categories');
+        navigate('/admin');
       }, 2000);
       
     } catch (error) {
@@ -230,7 +245,7 @@ const UpdateCategory = () => {
 
   // Handle cancel/back navigation
   const handleCancel = () => {
-    navigate('/admin/categories');
+    navigate('/admin');
   };
 
   // Show loading spinner while fetching data

@@ -48,32 +48,49 @@ const Category = () => {
 
   // Helper function to get category images with proper URL construction
   const getCategoryImages = (category) => {
-    if (!category.pic) return [];
-    
-    let imageArray = [];
-    if (Array.isArray(category.pic)) {
-      imageArray = category.pic;
-    } else if (typeof category.pic === 'string') {
-      try {
-        imageArray = JSON.parse(category.pic);
-      } catch {
-        imageArray = [category.pic];
-      }
+    console.log('🔍 Processing category images for:', category.name, category.pic);
+  
+    if (!category.pic) {
+      console.log('⚠️ No pic field found for category:', category.name);
+      return [];
     }
-    
+  
+    let imageArray = [];
+  
+    if (Array.isArray(category.pic)) {
+      // Already a JS array ✅
+      imageArray = category.pic;
+      console.log('📋 Found array of images:', imageArray);
+    } else if (typeof category.pic === 'string') {
+      // Handle Postgres TEXT[] like: {"url1","url2"}
+      imageArray = category.pic
+        .replace(/[{}]/g, "")   // remove {}
+        .replace(/"/g, "")      // remove quotes
+        .split(",")             // split by comma
+        .map((v) => v.trim());  // clean spaces
+  
+      console.log('📋 Parsed Postgres TEXT[] images:', imageArray);
+    }
+  
     // Construct proper URLs for images
-    return imageArray.map(imagePath => {
+    const constructedUrls = imageArray.map(imagePath => {
       if (imagePath.startsWith('http')) {
+        console.log('🌐 Using absolute URL:', imagePath);
         return imagePath;
       }
       // Handle both /uploads/categories/filename and uploads/categories/filename
       const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-      return `http://localhost:5000${cleanPath}`;
+      const fullUrl = `http://localhost:5000${cleanPath}`;
+      console.log('🔗 Constructed URL:', fullUrl);
+      return fullUrl;
     });
+  
+    return constructedUrls;
   };
-
-  // Handle image load errors
-  const handleImageError = (categoryId, imageIndex) => {
+  
+  // Enhanced image error handling
+  const handleImageError = (categoryId, imageIndex, imageSrc) => {
+    console.error(`❌ Image failed to load: Category ${categoryId}, Image ${imageIndex}, URL: ${imageSrc}`);
     setImageLoadErrors(prev => ({
       ...prev,
       [`${categoryId}-${imageIndex}`]: true
@@ -194,7 +211,8 @@ const Category = () => {
             {filteredCategories.map((category) => {
               const images = getCategoryImages(category);
               const isSpecial = isSpecialCategory(category);
-              
+              console.log("images",images);
+
               return (
                 <div
                   key={category.id}
