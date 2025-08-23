@@ -326,15 +326,15 @@ const CustomerManagement = () => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <FunnelIcon className="h-4 w-4 text-gray-400" />
-                <Select
+                <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="min-w-[120px]"
+                  className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm min-w-[120px]"
                 >
                   <option value="name">Sort by Name</option>
                   <option value="email">Sort by Email</option>
                   <option value="id">Sort by ID</option>
-                </Select>
+                </select>
               </div>
               
               <Button

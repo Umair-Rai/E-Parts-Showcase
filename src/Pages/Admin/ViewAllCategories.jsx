@@ -13,7 +13,8 @@ import {
   FunnelIcon,
   ChevronDownIcon,
   EyeIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CubeIcon
 } from '@heroicons/react/24/outline';
 import Badge from '../../Component/Badge';
 import Input from '../../Component/Input';
@@ -21,6 +22,7 @@ import Select from '../../Component/Select';
 
 const ViewAllCategories = () => {
   const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -38,19 +40,12 @@ const ViewAllCategories = () => {
         }
       });
       
-      // Debug logging to check the API response
-      console.log('📊 API Response:', res.data);
-      if (res.data.length > 0) {
-        console.log('📋 Sample category object:', res.data[0]);
-        console.log('🔍 Special category field:', res.data[0].special_category);
-      }
-      
+      console.log('📊 Categories fetched:', res.data);
       setCategories(res.data);
     } catch (err) {
       console.error("❌ Failed to fetch categories:", err);
       toast.error("Failed to fetch categories");
       
-      // If unauthorized, redirect to login
       if (err.response?.status === 401) {
         localStorage.removeItem('adminToken');
         navigate('/admin/login');
@@ -60,8 +55,29 @@ const ViewAllCategories = () => {
     }
   };
 
+  const fetchProducts = async () => {
+    try {
+      const adminToken = localStorage.getItem('adminToken');
+      const res = await axios.get("http://localhost:5000/api/products", {
+        headers: {
+          Authorization: `Bearer ${adminToken}`
+        }
+      });
+      
+      console.log('📦 Products fetched for categories:', res.data);
+      setProducts(res.data);
+    } catch (err) {
+      console.error("❌ Failed to fetch products:", err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+      }
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
+    fetchProducts();
   }, []);
 
   const handleDeleteCategory = async (categoryId) => {
@@ -81,7 +97,6 @@ const ViewAllCategories = () => {
       console.error("❌ Failed to delete category:", err);
       toast.error("Failed to delete category");
       
-      // If unauthorized, redirect to login
       if (err.response?.status === 401) {
         localStorage.removeItem('adminToken');
         navigate('/admin/login');
@@ -96,7 +111,6 @@ const ViewAllCategories = () => {
 
   // Helper function to safely check special category status
   const isSpecialCategory = (category) => {
-    // Handle various possible field names and data types
     return category.special_category === true || 
            category.special_category === 'true' || 
            category.specialCategory === true || 
@@ -109,17 +123,34 @@ const ViewAllCategories = () => {
     if (Array.isArray(category.pic)) return category.pic;
     if (typeof category.pic === 'string') {
       try {
-        // Try to parse if it's a JSON string
         return JSON.parse(category.pic);
       } catch {
-        // If parsing fails, treat as single image path
         return [category.pic];
       }
     }
     return [];
   };
 
-  // Filter categories based on search (only by name since description doesn't exist)
+  // Helper function to get products in category
+  const getProductsInCategory = (categoryId) => {
+    return products.filter(product => product.category_id === categoryId);
+  };
+
+  // Helper function to get product images
+  const getProductImages = (product) => {
+    if (!product.pic) return [];
+    if (Array.isArray(product.pic)) return product.pic;
+    if (typeof product.pic === 'string') {
+      try {
+        return JSON.parse(product.pic);
+      } catch {
+        return [product.pic];
+      }
+    }
+    return [];
+  };
+
+  // Filter categories based on search
   const filteredCategories = categories.filter(category => {
     const matchesSearch = category.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
@@ -143,12 +174,16 @@ const ViewAllCategories = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Categories Management</h1>
-            <p className="text-gray-600 mt-2">Manage your product categories</p>
+            <p className="text-gray-600 mt-2">Manage your product categories and view associated products</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="bg-white px-4 py-2 rounded-lg shadow-sm border">
               <span className="text-sm text-gray-600">Total Categories: </span>
               <span className="font-semibold text-purple-600">{categories.length}</span>
+            </div>
+            <div className="bg-white px-4 py-2 rounded-lg shadow-sm border">
+              <span className="text-sm text-gray-600">Total Products: </span>
+              <span className="font-semibold text-blue-600">{products.length}</span>
             </div>
           </div>
         </div>
@@ -196,6 +231,7 @@ const ViewAllCategories = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products Count</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Special Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -203,7 +239,7 @@ const ViewAllCategories = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                     <Squares2X2Icon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                     <p className="text-lg font-medium">No categories found</p>
                     <p className="text-sm">Try adjusting your search or add a new category</p>
@@ -211,14 +247,7 @@ const ViewAllCategories = () => {
                 </tr>
               ) : (
                 filteredCategories.map((category, index) => {
-                  // Debug logging for each category
-                  console.log(`🔍 Category ${index + 1}:`, {
-                    id: category.id,
-                    name: category.name,
-                    special_category: category.special_category,
-                    specialCategory: category.specialCategory,
-                    isSpecial: isSpecialCategory(category)
-                  });
+                  const categoryProducts = getProductsInCategory(category.id);
                   
                   return (
                     <tr key={category.id} className="hover:bg-gray-50 transition-colors">
@@ -229,6 +258,13 @@ const ViewAllCategories = () => {
                             <Squares2X2Icon className="h-4 w-4 text-purple-600" />
                           </div>
                           <span className="text-sm font-medium text-gray-900">{category.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <CubeIcon className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm font-medium text-blue-600">{categoryProducts.length}</span>
+                          <span className="text-xs text-gray-500">products</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -275,7 +311,7 @@ const ViewAllCategories = () => {
       {/* Category Details Modal */}
       {showModal && selectedCategory && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -299,28 +335,38 @@ const ViewAllCategories = () => {
             
             <div className="p-6 space-y-6">
               {/* Category Info */}
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <span className="text-sm text-gray-600">Category Name:</span>
-                  <p className="font-semibold">{selectedCategory.name}</p>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">Special Category:</span>
-                  <div className="mt-1">
-                    {isSpecialCategory(selectedCategory) ? (
-                      <Badge text="Yes" status="delivered" />
-                    ) : (
-                      <Badge text="No" status="cancelled" />
-                    )}
+                  <h4 className="text-lg font-medium text-gray-800 mb-3">Category Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-sm text-gray-600">Category Name:</span>
+                      <p className="font-semibold">{selectedCategory.name}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Special Category:</span>
+                      <div className="mt-1">
+                        {isSpecialCategory(selectedCategory) ? (
+                          <Badge text="Yes" status="delivered" />
+                        ) : (
+                          <Badge text="No" status="cancelled" />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Products in Category:</span>
+                      <p className="font-semibold text-blue-600">{getProductsInCategory(selectedCategory.id).length}</p>
+                    </div>
                   </div>
                 </div>
+                
                 {/* Display category images if available */}
                 {(() => {
                   const images = getCategoryImages(selectedCategory);
                   return images.length > 0 && (
                     <div>
-                      <span className="text-sm text-gray-600">Category Images:</span>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
+                      <h4 className="text-lg font-medium text-gray-800 mb-3">Category Images</h4>
+                      <div className="grid grid-cols-2 gap-2">
                         {images.map((imagePath, index) => (
                           <img
                             key={index}
@@ -337,6 +383,50 @@ const ViewAllCategories = () => {
                   );
                 })()}
               </div>
+              
+              {/* Products in Category */}
+              {(() => {
+                const categoryProducts = getProductsInCategory(selectedCategory.id);
+                return categoryProducts.length > 0 && (
+                  <div>
+                    <h4 className="text-lg font-medium text-gray-800 mb-3">Products in this Category</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {categoryProducts.slice(0, 6).map((product) => {
+                        const productImages = getProductImages(product);
+                        return (
+                          <div key={product.id} className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                            <div className="flex items-center gap-3">
+                              {productImages.length > 0 ? (
+                                <img
+                                  src={productImages[0].startsWith('http') ? productImages[0] : `http://localhost:5000${productImages[0]}`}
+                                  alt={product.name}
+                                  className="w-12 h-12 object-cover rounded-lg"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  <CubeIcon className="h-6 w-6 text-gray-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                                <p className="text-xs text-gray-500">ID: {product.id}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {categoryProducts.length > 6 && (
+                      <p className="text-sm text-gray-500 mt-2">
+                        And {categoryProducts.length - 6} more products...
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
@@ -345,6 +435,16 @@ const ViewAllCategories = () => {
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  handleDeleteCategory(selectedCategory.id);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              >
+                <TrashIcon className="h-4 w-4" />
+                Delete Category
               </button>
               <button
                 onClick={() => {

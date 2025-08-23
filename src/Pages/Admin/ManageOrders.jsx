@@ -201,15 +201,6 @@ const ManageOrders = () => {
               <ClipboardDocumentListIcon className="h-8 w-8 text-green-500" />
             </div>
           </div>
-          <div className="bg-white p-4 rounded-xl shadow-sm border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-purple-600">${totalRevenue.toFixed(2)}</p>
-              </div>
-              <CurrencyDollarIcon className="h-8 w-8 text-purple-500" />
-            </div>
-          </div>
         </div>
       </div>
 

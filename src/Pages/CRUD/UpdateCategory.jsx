@@ -20,6 +20,10 @@ import ImageUpload from '../../Component/ImageUpload';
 const UpdateCategory = () => {
   const navigate = useNavigate();
   const { categoryId } = useParams(); // Fixed: Changed from 'id' to 'categoryId'
+  
+  // Move API_BASE_URL to component level (before any useEffect or functions)
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -45,7 +49,7 @@ const UpdateCategory = () => {
         }
 
         const response = await axios.get(
-          `http://localhost:5000/api/categories/${categoryId}`, // Fixed: Changed from 'id' to 'categoryId'
+          `${API_BASE_URL}/api/categories/${categoryId}`,
           {
             headers: {
               'Authorization': `Bearer ${adminToken}`
@@ -206,7 +210,7 @@ const UpdateCategory = () => {
       });
       
       const response = await axios.put(
-        `http://localhost:5000/api/categories/${categoryId}`, // Fixed: Changed from 'id' to 'categoryId'
+        `${API_BASE_URL}/api/categories/${categoryId}`,
         formDataToSend,
         {
           headers: {
@@ -370,10 +374,16 @@ const UpdateCategory = () => {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {formData.existingImages.map((imagePath, index) => {
-                  // Fixed: Proper image URL construction
-                  const imageUrl = imagePath.startsWith('http') 
-                    ? imagePath 
-                    : `http://localhost:5000${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`;
+                  // Helper function to get full image URL
+                  const getImageUrl = (imagePath) => {
+                    if (!imagePath) return null;
+                    return imagePath.startsWith('http') 
+                      ? imagePath 
+                      : `${API_BASE_URL}${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`;
+                  };
+                  
+                  // Call the function to get the actual URL
+                  const imageUrl = getImageUrl(imagePath);
                   
                   console.log('🖼️ Loading image:', imageUrl); // Debug log
                   
