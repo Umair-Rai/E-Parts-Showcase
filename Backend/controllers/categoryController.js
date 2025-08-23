@@ -40,22 +40,29 @@ const createCategory = asyncHandler(async (req, res) => {
 
 const updateCategory = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, specialCategory } = req.body;
+  const { name, specialCategory, existingImages } = req.body;
 
-  // Handle uploaded files - if new files uploaded, use them; otherwise keep existing
-  let picArray;
-  if (req.files && req.files.length > 0) {
-    picArray = req.files.map(file => `/uploads/categories/${file.filename}`);
-  } else {
-    // Keep existing images if no new files uploaded
-    const existing = await pool.query('SELECT pic FROM category WHERE id = $1', [id]);
-    picArray = existing.rows[0]?.pic || [];
+  // Parse existingImages from JSON string
+  let existingImagesArray = [];
+  if (existingImages) {
+    try {
+      existingImagesArray = JSON.parse(existingImages);
+    } catch (error) {
+      console.error('Error parsing existingImages:', error);
+      existingImagesArray = [];
+    }
   }
 
+  // Handle new uploaded files
+  const newImagesArray = req.files ? req.files.map(file => `/uploads/categories/${file.filename}`) : [];
+  
+  // Combine existing images (that should be kept) with new uploaded images
+  const finalPicArray = [...existingImagesArray, ...newImagesArray];
+  
   const query =
     'UPDATE category SET name = $1, pic = $2, special_category = $3 WHERE id = $4 RETURNING *';
 
-  const result = await pool.query(query, [name, picArray, specialCategory === 'true', id]);
+  const result = await pool.query(query, [name, finalPicArray, specialCategory === 'true', id]);
   
   if (result.rows.length === 0) {
     res.status(404);

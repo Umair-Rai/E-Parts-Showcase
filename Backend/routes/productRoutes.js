@@ -27,7 +27,7 @@ router.post(
   [
     body('name').notEmpty().withMessage('Product name is required'),
     body('categoryId').isInt().withMessage('Category ID must be an integer'),
-    body('adminId').optional().isInt(),
+    // Remove this line: body('adminId').optional().isInt(),
     validateRequest,
   ],
   productController.createProduct

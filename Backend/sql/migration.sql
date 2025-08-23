@@ -44,6 +44,17 @@ CREATE TABLE product (
     admin_id INT REFERENCES admin(id) ON DELETE SET NULL
 );
 
+-- Mechanical seal attributes table
+CREATE TABLE mechanical_seal_attributes (
+    id SERIAL PRIMARY KEY,
+    product_id INT REFERENCES product(id) ON DELETE CASCADE,
+    material VARCHAR(255) NOT NULL,
+    temperature VARCHAR(50) NOT NULL,
+    pressure VARCHAR(50) NOT NULL,
+    speed VARCHAR(50) NOT NULL
+);
+
+
 -- Orders table
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,

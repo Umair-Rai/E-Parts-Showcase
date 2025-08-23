@@ -72,29 +72,58 @@ const categoryUpload = multer({
   fileFilter: fileFilter
 });
 
-// Middleware for handling uploads
-const uploadProductImages = productUpload.array('productImages', 2);
 const uploadCategoryImages = categoryUpload.array('images', 2);
-
+const uploadProductImages = productUpload.fields([
+  { name: 'productImages', maxCount: 2 },
+  { name: 'images', maxCount: 2 },
+]);
 // Error handling middleware for multer
 const handleUploadError = (error, req, res, next) => {
+  console.error('Upload error:', error);
+  
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({ error: 'Maximum 2 images allowed per product' });
+      return res.status(400).json({ 
+        error: 'Maximum 2 images allowed per product',
+        code: 'FILE_COUNT_LIMIT'
+      });
     }
     if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'File size too large. Maximum 5MB per image' });
+      return res.status(413).json({ 
+        error: 'File size too large. Maximum 5MB per image',
+        code: 'FILE_SIZE_LIMIT'
+      });
+    }
+    if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+      return res.status(400).json({ 
+        error: 'Unexpected file field. Use "productImages" or "images"',
+        code: 'UNEXPECTED_FIELD'
+      });
     }
   }
+  
   if (error.message.includes('Only image files')) {
-    return res.status(400).json({ error: error.message });
+    return res.status(400).json({ 
+      error: error.message,
+      code: 'INVALID_FILE_TYPE'
+    });
   }
+  
+  // Log unexpected errors
+  console.error('Unexpected upload error:', error);
   next(error);
 };
 
 // Helper function to delete files
 const deleteFile = (filename) => {
-  const filePath = path.join(uploadsDir, filename);
+  // Determine the correct directory based on filename
+  let filePath;
+  if (filename.includes('category-')) {
+    filePath = path.join(categoriesDir, filename);
+  } else {
+    filePath = path.join(productsDir, filename);
+  }
+  
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
   }

@@ -1,45 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { body, param } = require('express-validator');
-
-const cartController = require('../controllers/cartController');
 const { requireAuth } = require('../middleware/authMiddleware');
-const { validateRequest } = require('../middleware/validate');
+const {
+    getCartByUser,
+    addToCart,
+    updateCartItem,
+    removeCartItem,
+} = require('../controllers/cartController');
 
-router.use(requireAuth);
+// Get all items in customer's cart
+router.get('/:userId', requireAuth, getCartByUser);
 
-router.get('/', cartController.getCart);
+// Add item to cart
+router.post('/add', requireAuth, addToCart);
 
-router.post(
-  '/',
-  [
-    body('product_id').isInt().withMessage('Product ID must be an integer'),
-    body('quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
-    body('size').optional().isString(),
-    body('description').optional().isString(),
-    validateRequest,
-  ],
-  cartController.addToCart
-);
+// Update cart item quantity
+router.put('/update/:id', requireAuth, updateCartItem);
 
-router.put(
-  '/:itemId',
-  [
-    param('itemId').isInt().withMessage('Item ID must be an integer'),
-    body('quantity').optional().isInt({ min: 1 }),
-    body('size').optional().isString(),
-    body('description').optional().isString(),
-    validateRequest,
-  ],
-  cartController.updateCartItem
-);
-
-router.delete(
-  '/item/:itemId',
-  [param('itemId').isInt().withMessage('Item ID must be an integer'), validateRequest],
-  cartController.removeFromCart
-);
-
-router.delete('/clear', cartController.clearCart);
+// Remove item from cart
+router.delete('/remove/:id', requireAuth, removeCartItem);
 
 module.exports = router;
