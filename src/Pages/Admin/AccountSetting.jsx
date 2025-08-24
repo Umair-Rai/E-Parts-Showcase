@@ -250,7 +250,8 @@ const AccountSettings = () => {
         {[
           { id: 'profile', label: 'Profile Settings', icon: UserIcon },
           { id: 'password', label: 'Password & Security', icon: KeyIcon },
-          { id: 'admins', label: 'Admin Management', icon: UsersIcon },
+          // Only show Admin Management tab for super admin
+          ...(adminData?.role === 'super admin' ? [{ id: 'admins', label: 'Admin Management', icon: UsersIcon }] : []),
         ].map((tab) => (
           <button
             key={tab.id}

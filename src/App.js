@@ -13,6 +13,7 @@ import UpdateCategory from "./Pages/CRUD/UpdateCategory";
 import Login from "./Pages/Auth/Login";
 import Signup from "./Pages/Auth/Signup";
 import ProductCatalog from "./Pages/Product/product";
+import ProductDetail from "./Pages/Product/ProductDetail";
 import AdminLogin from "./Pages/Admin/Adminlogin";
 import AdminRoute from "./Component/AdminRoutes";
 
@@ -29,6 +30,7 @@ function App() {
             <Route path="/category" element={<Category />} />
             <Route path="/about" element={<About />} />
             <Route path="/product" element={<ProductCatalog />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin/login" element={<AdminLogin />} />

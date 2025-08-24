@@ -27,6 +27,8 @@ export default function ViewAllProducts() {
   const [categories, setCategories] = useState([]);
   const [mechanicalSealAttributes, setMechanicalSealAttributes] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
@@ -34,84 +36,230 @@ export default function ViewAllProducts() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Fetch products from API
-  const fetchProducts = async () => {
+  // Enhanced fetch products with retry logic
+  const fetchProducts = async (isRetry = false) => {
     try {
-      setLoading(true);
+      if (!isRetry) {
+        setLoading(true);
+        setError(null);
+      }
+      
       const adminToken = localStorage.getItem('adminToken');
+      
+      if (!adminToken) {
+        navigate('/admin/login');
+        return;
+      }
+
       const res = await axios.get("http://localhost:5000/api/products", {
         headers: {
           Authorization: `Bearer ${adminToken}`
-        }
+        },
+        timeout: 10000 // 10 second timeout
       });
       
       console.log('📦 Products fetched:', res.data);
       setProducts(res.data);
+      setRetryCount(0); // Reset retry count on success
       
       // Fetch mechanical seal attributes for each product
       await fetchMechanicalSealAttributes(res.data);
     } catch (err) {
       console.error("❌ Failed to fetch products:", err);
-      toast.error("Failed to fetch products");
       
       if (err.response?.status === 401) {
         localStorage.removeItem('adminToken');
         navigate('/admin/login');
+        return;
       }
+      
+      // Handle network errors with retry logic
+      if (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK' || !err.response) {
+        if (retryCount < 3) {
+          console.log(`🔄 Retrying... Attempt ${retryCount + 1}/3`);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => fetchProducts(true), 2000 * (retryCount + 1)); // Exponential backoff
+          return;
+        }
+      }
+      
+      setError("Failed to fetch products. Please refresh the page.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch categories
+
+
+  // Enhanced fetch categories with error handling
   const fetchCategories = async () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
+      
+      if (!adminToken) {
+        return; // Don't redirect here, let fetchProducts handle it
+      }
+      
       const res = await axios.get("http://localhost:5000/api/categories", {
         headers: {
           Authorization: `Bearer ${adminToken}`
-        }
+        },
+        timeout: 10000
       });
       setCategories(res.data);
     } catch (err) {
       console.error("❌ Failed to fetch categories:", err);
-      if (err.response?.status === 401) {
-        localStorage.removeItem('adminToken');
-        navigate('/admin/login');
+      // Don't redirect on category fetch failure, just log the error
+      if (err.response?.status !== 401) {
+        console.warn("Categories unavailable, continuing without category filter");
       }
     }
   };
 
   // Fetch mechanical seal attributes for products
-  const fetchMechanicalSealAttributes = async (productList) => {
+  const fetchMechanicalSealAttributes = async (products) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const attributesMap = {};
       
-      for (const product of productList) {
+      if (!adminToken || !products || products.length === 0) {
+        return;
+      }
+
+      const attributes = {};
+      
+      // Fetch attributes for each product that might have mechanical seal data
+      for (const product of products) {
         try {
-          const res = await axios.get(`http://localhost:5000/api/mechanical-seal-attributes/${product.id}`, {
+          const res = await axios.get(`http://localhost:5000/api/mechanical-seals/product/${product.id}`, {
             headers: {
               Authorization: `Bearer ${adminToken}`
-            }
+            },
+            timeout: 5000
           });
-          attributesMap[product.id] = res.data;
+          
+          if (res.data && res.data.length > 0) {
+            attributes[product.id] = res.data;
+          }
         } catch (err) {
-          // If no attributes found, continue without error
-          console.log(`No mechanical seal attributes found for product ${product.id}`);
+          // Silently handle errors for individual products
+          // This is optional data, so we don't want to break the main flow
+          if (err.response?.status !== 404) {
+            console.warn(`Failed to fetch mechanical seal attributes for product ${product.id}:`, err.message);
+          }
         }
       }
       
-      setMechanicalSealAttributes(attributesMap);
+      setMechanicalSealAttributes(attributes);
     } catch (err) {
       console.error("❌ Failed to fetch mechanical seal attributes:", err);
+      // Don't throw error, this is optional functionality
     }
   };
 
+  // Enhanced useEffect with better error handling and DevTools compatibility
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
+    const initializeData = async () => {
+      // Ensure proper timing regardless of DevTools state
+      const delay = window.chrome && window.chrome.devtools ? 200 : 100;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      // Use Promise.allSettled to prevent one failure from affecting others
+      const results = await Promise.allSettled([
+        fetchProducts(),
+        fetchCategories()
+      ]);
+      
+      // Log results for debugging
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.warn(`Data fetch ${index} failed:`, result.reason);
+        }
+      });
+    };
+
+    initializeData();
   }, []);
+
+  // Enhanced fetch products with DevTools-aware timing (keep this version)
+  // Remove these lines completely (lines 40-85):
+  // const fetchProducts = async (isRetry = false) => {
+  //   try {
+  //     if (!isRetry) {
+  //       setLoading(true);
+  //       setError(null);
+  //     }
+  //     
+  //     const adminToken = localStorage.getItem('adminToken');
+  //     
+  //     if (!adminToken) {
+  //       navigate('/admin/login');
+  //       return;
+  //     }
+  
+  //     const res = await axios.get("http://localhost:5000/api/products", {
+  //       headers: {
+  //         Authorization: `Bearer ${adminToken}`
+  //       },
+  //       timeout: 10000 // 10 second timeout
+  //     });
+  //     
+  //     console.log('📦 Products fetched:', res.data);
+  //     setProducts(res.data);
+  //     setRetryCount(0); // Reset retry count on success
+  //     
+  //     // Fetch mechanical seal attributes for each product
+  //     await fetchMechanicalSealAttributes(res.data);
+  //   } catch (err) {
+  //     console.error("❌ Failed to fetch products:", err);
+  //     
+  //     if (err.response?.status === 401) {
+  //       localStorage.removeItem('adminToken');
+  //       navigate('/admin/login');
+  //       return;
+  //     }
+  //     
+  //     // Handle network errors with retry logic
+  //     if (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK' || !err.response) {
+  //       if (retryCount < 3) {
+  //         console.log(`🔄 Retrying... Attempt ${retryCount + 1}/3`);
+  //         setRetryCount(prev => prev + 1);
+  //         setTimeout(() => fetchProducts(true), 2000 * (retryCount + 1)); // Exponential backoff
+  //         return;
+  //       }
+  //     }
+  //     
+  //     setError("Failed to fetch products. Please refresh the page.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+  // Add error display in the render
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <span className="ml-3 text-gray-600">
+          Loading products... {retryCount > 0 && `(Retry ${retryCount}/3)`}
+        </span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <div className="text-red-600 mb-4">{error}</div>
+        <button 
+          onClick={() => fetchProducts()} 
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   // Delete product handler
   const handleDeleteProduct = async (productId) => {

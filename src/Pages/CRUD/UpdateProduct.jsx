@@ -18,7 +18,7 @@ import Input from '../../Component/Input';
 import Button from '../../Component/Button';
 import ImageUpload from '../../Component/ImageUpload';
 
-// Add this helper function after line 21
+// Replace the existing getProductDescriptions function (around line 22)
 const getProductDescriptions = (descriptions) => {
   if (!descriptions) return '';
   if (Array.isArray(descriptions)) {
@@ -28,6 +28,98 @@ const getProductDescriptions = (descriptions) => {
     return descriptions;
   }
   return String(descriptions);
+};
+
+// Replace the existing getProductSizes function (around line 34)
+const getProductSizes = (sizes) => {
+  if (!sizes) return '';
+  
+  // If it's already a string, return it
+  if (typeof sizes === 'string') {
+    return sizes;
+  }
+  
+  // If it's an array, join it into a string
+  if (Array.isArray(sizes)) {
+    return sizes.join(', ');
+  }
+  
+  // If it's a JSON string array like ["size1","size2"], parse it
+  if (typeof sizes === 'string' && sizes.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(sizes);
+      return Array.isArray(parsed) ? parsed.join(', ') : sizes;
+    } catch (e) {
+      return sizes;
+    }
+  }
+  
+  return String(sizes);
+};
+
+// Add new helper functions for converting strings to arrays
+const convertSizesToArray = (sizesString) => {
+  if (!sizesString) return [];
+  
+  // If it's already an array, return it
+  if (Array.isArray(sizesString)) {
+    return sizesString;
+  }
+  
+  // If it's a string, split by commas and trim each element
+  if (typeof sizesString === 'string') {
+    return sizesString
+      .split(',')
+      .map(size => size.trim())
+      .filter(size => size.length > 0); // Remove empty strings
+  }
+  
+  return [];
+};
+
+const convertDescriptionsToArray = (descriptionsString) => {
+  if (!descriptionsString) return [];
+  
+  // If it's already an array, return it
+  if (Array.isArray(descriptionsString)) {
+    return descriptionsString;
+  }
+  
+  // If it's a string, split by commas and trim each element
+  if (typeof descriptionsString === 'string') {
+    return descriptionsString
+      .split(',')
+      .map(desc => desc.trim())
+      .filter(desc => desc.length > 0); // Remove empty strings
+  }
+  
+  return [];
+};
+
+// Add this function after getProductSizes (around line 58)
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return '';
+  
+  // If it's already a full URL, return as is
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // If the path already contains '/uploads/', don't add it again
+  if (imagePath.startsWith('/uploads/')) {
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    return `${API_BASE_URL}${imagePath}`;
+  }
+  
+  // If the path already contains 'uploads/' (without leading slash), add base URL only
+  if (imagePath.startsWith('uploads/')) {
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    return `${API_BASE_URL}/${imagePath}`;
+  }
+  
+  // For relative paths, construct the full URL
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  return `${API_BASE_URL}/uploads/products/${imagePath}`;
 };
 
 const UpdateProduct = () => {
@@ -73,7 +165,7 @@ const UpdateProduct = () => {
     fetchCategories();
   }, []);
 
-  // Fetch existing product data - FIXED VERSION
+  // Enhanced fetch product data with proper error handling
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -85,19 +177,34 @@ const UpdateProduct = () => {
           navigate('/admin/login');
           return;
         }
-
+  
         const response = await axios.get(
-          `http://localhost:5000/api/products/${productId}`, // FIXED: Changed from 'id' to 'productId'
+          `http://localhost:5000/api/products/${productId}`,
           {
             headers: {
               'Authorization': `Bearer ${adminToken}`
-            }
+            },
+            timeout: 15000 // Increased timeout for reliability
           }
         );
-
+  
         const productData = response.data;
         console.log('📋 Fetched product data:', productData);
         
+        // Helper function to handle image URLs
+        const getImageUrl = (imagePath) => {
+          if (!imagePath) return '';
+          
+          // If it's already a full URL, return as is
+          if (imagePath.startsWith('http')) {
+            return imagePath;
+          }
+          
+          // Construct the full URL
+          const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+          return `${API_BASE_URL}/uploads/products/${imagePath}`;
+        };
+
         // Helper function to safely handle product images
         const getProductImages = (product) => {
           if (!product.pic) return [];
@@ -115,54 +222,63 @@ const UpdateProduct = () => {
               .map((v) => v.trim());  // Trim whitespace from each element
           }
           
-          return imageArray;
+          // Return the raw image paths - getImageUrl will handle URL construction
+          return imageArray.filter(Boolean); // Remove any empty/null values
         };
-
+  
         const existingImages = getProductImages(productData);
         
         setFormData({
-          name: productData.name || '',
-          categoryId: productData.category_id || '',
-          sizes: productData.sizes || '',
-          descriptions: getProductDescriptions(productData.descriptions),
-          images: [],
-          existingImages: existingImages,
-          material: '',
-          temperature: '',
-          pressure: '',
-          speed: ''
-        });
+  name: productData.name || '',
+  categoryId: productData.category_id || '',
+  sizes: getProductSizes(productData.sizes), // Use helper function to handle arrays/strings
+  descriptions: getProductDescriptions(productData.descriptions),
+  images: [],
+  existingImages: existingImages,
+  material: '',
+  temperature: '',
+  pressure: '',
+  speed: ''
+});
         
         setOriginalData(productData);
         
       } catch (error) {
         console.error('❌ Failed to fetch product:', error);
         
+        // Enhanced error handling - don't redirect on network errors
         if (error.response?.status === 404) {
           toast.error('Product not found');
+          navigate('/admin'); // Only redirect for 404
         } else if (error.response?.status === 401) {
           toast.error('Authentication required. Please login again.');
+          localStorage.removeItem('adminToken');
           navigate('/admin/login');
-          return;
+        } else if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || !error.response) {
+          // Network errors - don't redirect, show error message
+          toast.error('Network error. Please check your connection and try again.');
+          console.log(toast.error);
+          setErrors({ network: 'Failed to load product data due to network issues' });
+        } else if (error.response?.status >= 500) {
+          // Server errors - don't redirect
+          toast.error('Server error. Please try again later.');
+          setErrors({ server: 'Server error occurred while loading product data' });
         } else {
-          toast.error('Failed to load product data');
+          // Other errors - show generic message but don't redirect
+          toast.error('Failed to load product data. Please try again.');
+          setErrors({ general: 'Failed to load product data' });
         }
-        
-        navigate('/admin');
       } finally {
-        // CRITICAL: Always set loading to false
         setFetchLoading(false);
       }
     };
-
-    // FIXED: Remove categories dependency to prevent deadlock
-    if (productId) { // FIXED: Changed from 'id' to 'productId'
+  
+    if (productId) {
       fetchProduct();
-    }
-    else{
+    } else {
       setFetchLoading(false);
     }                
-  }, [productId, navigate]); // FIXED: Changed from 'id' to 'productId'
+  }, [productId, navigate]);
 
   // Separate useEffect for mechanical seal logic
   useEffect(() => {
@@ -336,6 +452,16 @@ const UpdateProduct = () => {
 };
 
   // Handle form submission
+  // Add DevTools detection function at the top of the component
+  const detectDevToolsNetworkPanel = () => {
+    const isDevToolsOpen = window.outerHeight - window.innerHeight > 160 || 
+                        window.outerWidth - window.innerWidth > 160;
+    const isReload = performance.navigation?.type === 1 || 
+                  performance.getEntriesByType('navigation')[0]?.type === 'reload';
+    return isDevToolsOpen && isReload;
+  };
+  
+  // Enhanced handleSubmit function
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -367,124 +493,207 @@ const UpdateProduct = () => {
         return;
       }
       
+      // DevTools-aware configuration
+      const isDevToolsNetworkActive = detectDevToolsNetworkPanel();
+      const requestTimeout = isDevToolsNetworkActive ? 20000 : 10000;
+      
+      // Add delay if DevTools network panel is active
+      if (isDevToolsNetworkActive) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
       // Create FormData for file upload
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name.trim());
       formDataToSend.append('categoryId', formData.categoryId);
-      formDataToSend.append('sizes', formData.sizes.trim());
-      formDataToSend.append('descriptions', formData.descriptions.trim());
-      // REMOVED: formDataToSend.append('adminId', localStorage.getItem('adminId') || '1');
+
+      // Convert sizes and descriptions to arrays before sending
+      const sizesArray = convertSizesToArray(formData.sizes);
+      const descriptionsArray = convertDescriptionsToArray(formData.descriptions);
+
+      formDataToSend.append('sizes', JSON.stringify(sizesArray));
+      formDataToSend.append('descriptions', JSON.stringify(descriptionsArray));
       
       // Send existing images that should be kept
-      // In handleSubmit function
       formDataToSend.append('existingImages', JSON.stringify(formData.existingImages));
-      // Remove the old keepExistingImages line
       
       // Append new image files
       formData.images.forEach((file, index) => {
         formDataToSend.append('productImages', file);
       });
       
-      // Replace all instances of http://localhost:5000 with your actual backend URL
       const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       
-      // Then use:
-      const response = await axios.put(
-        `${API_BASE_URL}/api/products/${productId}`,
-        formDataToSend,
-        {
-          headers: {
-            'Authorization': `Bearer ${adminToken}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
+      // Enhanced axios configuration for DevTools compatibility
+      const axiosConfig = {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: requestTimeout,
+        validateStatus: (status) => status < 500, // Accept 4xx errors
+        maxRedirects: 0 // Prevent redirects when DevTools is open
+      };
       
-      // Update mechanical seal attributes if applicable
-      if (isMechanicalSeal) {
-        const mechData = {
-          productId: productId, // FIXED: Changed from 'id' to 'productId'
-          material: formData.material.trim(),
-          temperature: formData.temperature.trim(),
-          pressure: formData.pressure.trim(),
-          speed: formData.speed.trim()
-        };
+      // Add DevTools-specific headers
+      if (isDevToolsNetworkActive) {
+        axiosConfig.headers['Cache-Control'] = 'no-cache';
+        axiosConfig.headers['Pragma'] = 'no-cache';
+      }
+      
+      let response;
+      let updateSuccess = false;
+      
+      try {
+        // Primary request attempt
+        response = await axios.put(
+          `${API_BASE_URL}/api/products/${productId}`,
+          formDataToSend,
+          axiosConfig
+        );
+        updateSuccess = true;
+      } catch (primaryError) {
+        console.warn('Primary update request failed:', primaryError.message);
         
-        try {
-          if (mechanicalSealAttributes) {
-            // Update existing attributes (if update endpoint exists)
-            // For now, we'll create new ones since update endpoint doesn't exist
-            await axios.post(
-              'http://localhost:5000/api/mechanical-seal-attributes',
-              mechData,
-              {
-                headers: {
-                  'Authorization': `Bearer ${adminToken}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-          } else {
-            // Create new attributes
-            await axios.post(
-              'http://localhost:5000/api/mechanical-seal-attributes',
-              mechData,
-              {
-                headers: {
-                  'Authorization': `Bearer ${adminToken}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
+        // If blocked by DevTools, try alternative approach
+        if (isDevToolsNetworkActive && 
+            (primaryError.code === 'ERR_NETWORK' || 
+             primaryError.message?.includes('blocked') ||
+             primaryError.code === 'ECONNABORTED')) {
+          
+          console.log('Attempting alternative update method due to DevTools blocking...');
+          
+          try {
+            // Convert FormData to JSON for fetch API
+            const jsonData = {
+  name: formData.name.trim(),
+  categoryId: formData.categoryId,
+  sizes: convertSizesToArray(formData.sizes),
+  descriptions: convertDescriptionsToArray(formData.descriptions),
+  existingImages: formData.existingImages
+};
+            
+            // Handle file uploads separately if needed
+            if (formData.images.length > 0) {
+              // For now, show a message about image upload limitation
+              toast.warning('Image upload may be limited when DevTools is open. Please close DevTools and try again for image updates.');
+            }
+            
+            // Alternative fetch request
+            const fetchResponse = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${adminToken}`,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              body: JSON.stringify(jsonData),
+              cache: 'no-cache'
+            });
+            
+            if (fetchResponse.ok) {
+              response = { data: await fetchResponse.json() };
+              updateSuccess = true;
+              console.log('✅ Alternative update method succeeded');
+            } else {
+              throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
+            }
+          } catch (alternativeError) {
+            console.error('Alternative update method also failed:', alternativeError);
+            throw primaryError; // Throw original error
           }
-        } catch (mechError) {
-          console.error('Failed to update mechanical seal attributes:', mechError);
-          // Don't fail the entire update for this
+        } else {
+          throw primaryError;
         }
       }
       
-      toast.success('Product updated successfully!');
-      
-      // Navigate back to products list after a short delay
-      setTimeout(() => {
-        navigate('/admin');
-      }, 2000);
+      if (updateSuccess) {
+        // Update mechanical seal attributes if applicable
+        if (isMechanicalSeal) {
+          const mechData = {
+            productId: productId,
+            material: formData.material.trim(),
+            temperature: formData.temperature.trim(),
+            pressure: formData.pressure.trim(),
+            speed: formData.speed.trim()
+          };
+          
+          try {
+            await axios.post(
+              `${API_BASE_URL}/api/mechanical-seal-attributes`,
+              mechData,
+              {
+                headers: {
+                  'Authorization': `Bearer ${adminToken}`,
+                  'Content-Type': 'application/json'
+                },
+                timeout: requestTimeout
+              }
+            );
+          } catch (mechError) {
+            console.error('Failed to update mechanical seal attributes:', mechError);
+            // Don't fail the entire update for this
+            toast.warning('Product updated but mechanical seal attributes may not have been saved.');
+          }
+        }
+        
+        toast.success('Product updated successfully!');
+        
+        // Navigate back to products list after a short delay
+        setTimeout(() => {
+          navigate('/admin');
+        }, 2000);
+      }
       
     } catch (error) {
       console.error('❌ Failed to update product:', error);
       
-      // Enhanced network error handling
+      // Enhanced network error handling with DevTools awareness
       if (error.code === 'NETWORK_ERROR' || error.code === 'ERR_NETWORK') {
+        if (detectDevToolsNetworkPanel()) {
+          toast.error('Request blocked by DevTools. Please close the Network panel in DevTools and try again.');
+        } else {
           toast.error('Cannot connect to server. Please ensure the backend is running on http://localhost:5000');
+        }
       } else if (error.code === 'ECONNREFUSED') {
-          toast.error('Connection refused. Backend server may not be running.');
+        toast.error('Connection refused. Backend server may not be running.');
       } else if (error.code === 'ERR_CONNECTION_REFUSED') {
-          toast.error('Backend server is not responding. Please start the server.');
+        toast.error('Backend server is not responding. Please start the server.');
+      } else if (error.code === 'ECONNABORTED') {
+        if (detectDevToolsNetworkPanel()) {
+          toast.error('Request timed out. This may be due to DevTools network throttling. Please close DevTools and try again.');
+        } else {
+          toast.error('Request timed out. Please check your connection and try again.');
+        }
       } else if (!error.response) {
+        if (detectDevToolsNetworkPanel()) {
+          toast.error('Network request blocked. Please close DevTools Network panel or disable network throttling and try again.');
+        } else {
           toast.error('Network error. Please check if the backend server is running and try again.');
+        }
       } else if (error.response?.status === 400) {
-          const errorMessage = error.response.data.message || 'Validation error';
-          if (errorMessage.includes('image')) {
-              toast.error('Image upload failed. Please check file size and format.');
-          } else {
-              toast.error(errorMessage);
-          }
+        const errorMessage = error.response.data.message || 'Validation error';
+        if (errorMessage.includes('image')) {
+          toast.error('Image upload failed. Please check file size and format.');
+        } else {
+          toast.error(errorMessage);
+        }
       } else if (error.response?.status === 413) {
-          toast.error('File too large. Please reduce image size to under 5MB.');
+        toast.error('File too large. Please reduce image size to under 5MB.');
       } else if (error.response?.status === 404) {
-          toast.error('Product not found. It may have been deleted.');
+        toast.error('Product not found. It may have been deleted.');
       } else if (error.response?.status === 401) {
-          toast.error('Session expired. Please login again.');
-          localStorage.removeItem('adminToken');
-          navigate('/admin/login');
+        toast.error('Session expired. Please login again.');
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
       } else if (error.response?.status === 403) {
-          toast.error('You do not have permission to update this product.');
+        toast.error('You do not have permission to update this product.');
       } else if (error.response?.status >= 500) {
-          toast.error('Server error. Please try again later.');
+        toast.error('Server error. Please try again later.');
       } else if (error.response?.data?.message) {
-          toast.error(error.response.data.message);
+        toast.error(error.response.data.message);
       } else {
-          toast.error('Failed to update product. Please check your data and try again.');
+        toast.error('Failed to update product. Please check your data and try again.');
       }
     } finally {
       setLoading(false);
@@ -497,11 +706,36 @@ const UpdateProduct = () => {
   };
 
   // Show loading spinner while fetching data
+  // Add retry function
+  const retryFetchProduct = () => {
+    setErrors({});
+    setFetchLoading(true);
+    // Trigger useEffect by updating a dependency
+    window.location.reload();
+  };
+
+  // In the render section, add error display:
   if (fetchLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
         <span className="ml-3 text-gray-600">Loading product data...</span>
+      </div>
+    );
+  }
+
+  if (errors.network || errors.server || errors.general) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <div className="text-red-600 mb-4">
+          {errors.network || errors.server || errors.general}
+        </div>
+        <button 
+          onClick={retryFetchProduct}
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+        >
+          Retry Loading
+        </button>
       </div>
     );
   }
@@ -650,42 +884,38 @@ const UpdateProduct = () => {
 
           {/* Existing Images Section */}
           {formData.existingImages.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                🖼️ Current Images
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {formData.existingImages.map((imagePath, index) => {
-                  const imageUrl = imagePath.startsWith('http') 
-                    ? imagePath 
-                    : `http://localhost:5000${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`;
-                  
-                  return (
-                    <div key={index} className="relative group">
-                      <img
-                        src={imageUrl}
-                        alt={`Product ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg border"
-                        onError={(e) => {
-                          console.error('❌ Failed to load image:', imageUrl);
-                          e.target.style.display = 'none';
-                          const placeholder = document.createElement('div');
-                          placeholder.className = 'w-full h-32 bg-gray-200 rounded-lg border flex items-center justify-center text-gray-500';
-                          placeholder.innerHTML = '<span>Image not available</span>';
-                          e.target.parentNode.appendChild(placeholder);
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveExistingImage(index)}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove image"
-                      >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
+            <div className="existing-images">
+              <h4>Current Images:</h4>
+              <div className="image-preview-container">
+                {formData.existingImages.map((image, index) => (
+                  <div key={index} className="image-preview">
+                    <img 
+                      src={getImageUrl(image)} 
+                      alt={`Product ${index + 1}`}
+                      onError={(e) => {
+                        console.error('Failed to load image:', image);
+                        e.target.style.display = 'none';
+                        // Optionally show a placeholder
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                      onLoad={() => {
+                        console.log('✅ Image loaded successfully:', image);
+                      }}
+                    />
+                    <div 
+                      style={{ display: 'none', padding: '20px', background: '#f0f0f0', textAlign: 'center' }}
+                    >
+                      Image not available
                     </div>
-                  );
-                })}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExistingImage(index)}
+                      className="remove-image-btn"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}

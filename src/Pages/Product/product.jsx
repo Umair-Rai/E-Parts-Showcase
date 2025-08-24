@@ -11,6 +11,7 @@ import {
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import { useNavigate } from "react-router-dom";
 
 const ProductCatalog = () => {
   const [products, setProducts] = useState([]);
@@ -51,17 +52,18 @@ const ProductCatalog = () => {
 
   // Process product images similar to Category.jsx
   const getProductImages = (product) => {
-    if (!product.pics) return [];
+    if (!product.pic) return [];  // ✅ FIXED: Changed from 'pics' to 'pic'
     
     let imageArray = [];
     
     try {
-      if (Array.isArray(product.pics)) {
-        imageArray = product.pics;
-      } else if (typeof product.pics === 'string') {
-        if (product.pics.startsWith('{') && product.pics.endsWith('}')) {
+      if (Array.isArray(product.pic)) {
+        imageArray = product.pic;
+      } else if (typeof product.pic === 'string') {
+        if (product.pic.startsWith('{') && product.pic.endsWith('}')) {
           // Handle Postgres TEXT[] format: {"url1","url2"}
-          const cleanedString = product.pics
+          console.log('Raw TEXT[] format:', product.pic);
+          const cleanedString = product.pic
             .replace(/[{}"]/g, '') // Remove {, }, and " characters
             .split(',')
             .map(url => url.trim())
@@ -69,9 +71,9 @@ const ProductCatalog = () => {
           imageArray = cleanedString;
         } else {
           try {
-            imageArray = JSON.parse(product.pics);
+            imageArray = JSON.parse(product.pic);
           } catch {
-            imageArray = [product.pics];
+            imageArray = [product.pic];
           }
         }
       }
@@ -287,15 +289,22 @@ const ProductCatalog = () => {
 };
 
 // Product Card Component - Matching Category.jsx styling
-function ProductCard({ product, onQuickView, getCategoryName, getProductImages, handleImageError, imageLoadErrors }) {
-  const [hovered, setHovered] = useState(false);
+function ProductCard({ product, onQuickView, getCategoryName, getProductImages, handleImageError, imageLoadErrors, onViewDetails }) {
   const productImages = getProductImages(product);
+  const navigate = useNavigate();
+  const [hovered, setHovered] = useState(false);
+
+  // Add navigation function
+  const handleViewDetails = (productId) => {
+    navigate(`/product/${productId}`);
+  };
 
   return (
     <div
       className="group relative bg-gray-900 rounded-xl shadow-lg hover:shadow-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] border border-gray-700 hover:border-gray-600 cursor-pointer"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={() => handleViewDetails(product.id)}
     >
       {/* Image Container with Enhanced Hover Effects */}
       <div className="relative w-full h-64 bg-gray-800 overflow-hidden">
@@ -347,13 +356,27 @@ function ProductCard({ product, onQuickView, getCategoryName, getProductImages, 
         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
             <button
-              onClick={() => onQuickView(product)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickView(product);
+              }}
               className="bg-gray-900 text-white p-2 rounded-full hover:bg-gray-800 transition-all border border-gray-600"
               title="Quick View"
             >
               <EyeIcon className="w-4 h-4" />
             </button>
             <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewDetails(product.id);
+              }}
+              className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-all"
+              title="View Details"
+            >
+              <ArrowRightIcon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => e.stopPropagation()}
               className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-all"
               title="Add to Cart"
             >
@@ -397,18 +420,6 @@ function ProductCard({ product, onQuickView, getCategoryName, getProductImages, 
             </div>
           </div>
         )}
-        
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-400 transition-colors duration-300 group-hover:text-gray-300">
-            Product ID: {product.id}
-          </span>
-          <button 
-            onClick={() => onQuickView(product)}
-            className="text-sm font-medium transition-all duration-300 transform group-hover:translate-x-1 text-red-400 hover:text-red-300"
-          >
-            View Details →
-          </button>
-        </div>
         
         {/* Image count indicator */}
         {productImages.length > 1 && (
