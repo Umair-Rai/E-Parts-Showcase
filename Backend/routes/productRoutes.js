@@ -7,27 +7,27 @@ const { requireAuth } = require('../middleware/authMiddleware');
 const { validateRequest } = require('../middleware/validate');
 const { uploadProductImages, handleUploadError } = require('../middleware/uploadMiddleware');
 
-router.use(requireAuth);
-
-// Get all products
+// ✅ PUBLIC ROUTES (no authentication required)
+// Get all products - customers can view without login
 router.get('/', productController.getAllProducts);
 
-// Get product by ID
+// Get product by ID - customers can view individual products
 router.get(
   '/:id',
   [param('id').isInt().withMessage('Product ID must be an integer'), validateRequest],
   productController.getProductById
 );
 
+// ✅ PROTECTED ROUTES (authentication required for admin operations)
 // Create product with image upload
 router.post(
   '/',
+  requireAuth,
   uploadProductImages,
   handleUploadError,
   [
     body('name').notEmpty().withMessage('Product name is required'),
     body('categoryId').isInt().withMessage('Category ID must be an integer'),
-    // Remove this line: body('adminId').optional().isInt(),
     validateRequest,
   ],
   productController.createProduct
@@ -36,13 +36,13 @@ router.post(
 // Update product with image upload
 router.put(
   '/:id',
+  requireAuth,
   uploadProductImages,
   handleUploadError,
   [
-    param('id').isInt(),
-    body('name').notEmpty(),
-    body('categoryId').isInt(),
-    body('adminId').optional().isInt(),
+    param('id').isInt().withMessage('Product ID must be an integer'),
+    body('name').notEmpty().withMessage('Product name is required'),
+    body('categoryId').isInt().withMessage('Category ID must be an integer'),
     validateRequest,
   ],
   productController.updateProduct
@@ -51,6 +51,7 @@ router.put(
 // Delete specific product image
 router.delete(
   '/:id/images/:imageIndex',
+  requireAuth,
   [
     param('id').isInt().withMessage('Product ID must be an integer'),
     param('imageIndex').isInt().withMessage('Image index must be an integer'),
@@ -62,6 +63,7 @@ router.delete(
 // Delete product
 router.delete(
   '/:id',
+  requireAuth,
   [param('id').isInt(), validateRequest],
   productController.deleteProduct
 );

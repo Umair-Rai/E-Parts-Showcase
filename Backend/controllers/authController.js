@@ -70,9 +70,14 @@ const me = asyncHandler(async (req, res) => {
   const { id, role } = req.user;
 
   let userQuery = '';
-  if (role === 'admin') userQuery = 'SELECT id, name, email, role FROM admin WHERE id = $1';
-  else if (role === 'customer') userQuery = 'SELECT id, name, email FROM customer WHERE id = $1';
-  else throw new Error('Invalid role');
+  // ✅ FIXED: Handle both 'admin' and 'super admin' roles
+  if (role === 'admin' || role === 'super admin') {
+    userQuery = 'SELECT id, name, email, role FROM admin WHERE id = $1';
+  } else if (role === 'customer') {
+    userQuery = 'SELECT id, name, email FROM customer WHERE id = $1';
+  } else {
+    throw new Error('Invalid role');
+  }
 
   const userResult = await pool.query(userQuery, [id]);
   if (userResult.rows.length === 0) {

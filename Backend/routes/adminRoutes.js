@@ -35,7 +35,7 @@ router.put(
     body('name').optional().notEmpty(),
     body('email').optional().isEmail(),
     body('password').optional().isLength({ min: 6 }),
-    body('role').optional().isIn(['admin']),
+    body('role').optional().isIn(['admin', 'super admin']),
     validateRequest,
   ],
   adminController.updateAdmin

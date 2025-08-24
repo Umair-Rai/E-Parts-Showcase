@@ -18,14 +18,31 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+// Update CORS configuration (around line 22)
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar']
 }));
 app.use(express.json());
 
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Update static file serving with proper headers (around line 28)
+app.use('/uploads', (req, res, next) => {
+    // Set CORS headers for static files
+    res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+}, express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
 app.use('/api/cart', cartRoutes);

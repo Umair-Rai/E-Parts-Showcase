@@ -86,15 +86,36 @@ const createProduct = asyncHandler(async (req, res) => {
 
 // Update product with image management
 // Add this at the beginning of updateProduct function
+// In the updateProduct function, handle the arrays properly
 const updateProduct = asyncHandler(async (req, res) => {
     console.log('=== UPDATE PRODUCT REQUEST ===');
     console.log('Product ID:', req.params.id);
     console.log('Request body:', req.body);
-    console.log('Files received:', req.files);
-    console.log('User:', req.user);
     
     const { id } = req.params;
     const { name, categoryId, sizes, descriptions, existingImages } = req.body;
+    
+    // Parse sizes and descriptions if they come as JSON strings
+    let sizesArray = sizes;
+    let descriptionsArray = descriptions;
+    
+    if (typeof sizes === 'string') {
+        try {
+            sizesArray = JSON.parse(sizes);
+        } catch (e) {
+            // If parsing fails, treat as single item array
+            sizesArray = [sizes];
+        }
+    }
+    
+    if (typeof descriptions === 'string') {
+        try {
+            descriptionsArray = JSON.parse(descriptions);
+        } catch (e) {
+            // If parsing fails, treat as single item array
+            descriptionsArray = [descriptions];
+        }
+    }
     
     // Get current product
     const currentProduct = await pool.query('SELECT pic FROM product WHERE id = $1', [id]);
@@ -153,23 +174,12 @@ const updateProduct = asyncHandler(async (req, res) => {
         deleteFile(filename);
     });
 
-    const query = `
-        UPDATE product 
-        SET name = $1, category_id = $2, sizes = $3, descriptions = $4, pic = $5, admin_id = $6 
-        WHERE id = $7 
-        RETURNING *
-    `;
-
-    const result = await pool.query(query, [
-        name,
-        categoryId,
-        Array.isArray(sizes) ? sizes : [sizes],
-        Array.isArray(descriptions) ? descriptions : [descriptions],
-        picList,
-        req.user.id,
-        id
-    ]);
-
+    // Update the database with arrays
+    const result = await pool.query(
+        'UPDATE product SET name = $1, category_id = $2, sizes = $3, descriptions = $4, pic = $5 WHERE id = $6 RETURNING *',
+        [name, categoryId, sizesArray, descriptionsArray, picList, id]
+    );
+    
     res.json(result.rows[0]);
 });
 
