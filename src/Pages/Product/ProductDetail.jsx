@@ -32,8 +32,89 @@ const ProductDetail = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageLoadErrors, setImageLoadErrors] = useState({});
   const [selectedSize, setSelectedSize] = useState("");
+  const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [inquiryMessage, setInquiryMessage] = useState("");
   const [showInquiryModal, setShowInquiryModal] = useState(false);
+  // Add mechanical seal attributes state
+  const [mechanicalSealAttributes, setMechanicalSealAttributes] = useState(null);
+  const [isMechanicalSeal, setIsMechanicalSeal] = useState(false);
+
+  // Add these functions INSIDE the component
+  const handleSizeSelection = (size, index) => {
+    setSelectedSize(size);
+    setSelectedSizeIndex(index);
+  };
+
+  // Get current description based on selected size index
+  const getCurrentDescription = () => {
+    if (product?.descriptions && product.descriptions.length > 0) {
+      // If there's a selected size, show corresponding description
+      if (selectedSizeIndex < product.descriptions.length) {
+        return product.descriptions[selectedSizeIndex];
+      }
+      // Fallback to first description
+      return product.descriptions[0];
+    }
+    // Fallback to product.description if descriptions array doesn't exist
+    return product?.description || "No description available";
+  };
+
+  // Check if product is mechanical seal
+  const checkIfMechanicalSeal = (categoryId) => {
+    const category = categories.find(cat => String(cat.id) === String(categoryId));
+    console.log('Checking category:', category);
+    console.log('Category ID:', categoryId);
+    
+    if (!category) {
+      console.log('No category found for ID:', categoryId);
+      return false;
+    }
+    
+    const categoryName = category.name.toLowerCase();
+    console.log('Category name (lowercase):', categoryName);
+    
+    // Check for exact match with "Mechanical Seals"
+    const isMechanical = categoryName === 'mechanical seals' || 
+                    categoryName.includes('mechanical seal');
+    
+    console.log('Is mechanical seal?', isMechanical);
+    return isMechanical;
+  };
+  
+  // Fetch mechanical seal attributes with authentication
+  const fetchMechanicalSealAttributes = async (productId) => {
+    try {
+      console.log('Fetching mechanical seal attributes for product:', productId);
+      
+      // Get auth token from localStorage
+      const token = localStorage.getItem('token');
+      console.log('Auth token found:', !!token);
+      
+      if (!token) {
+        console.log('No authentication token found');
+        setMechanicalSealAttributes(null);
+        return;
+      }
+      
+      const response = await axios.get(
+        `http://localhost:5000/api/mechanical-seals/${productId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      console.log('Mechanical seal attributes response:', response.data);
+      setMechanicalSealAttributes(response.data);
+    } catch (error) {
+      console.log('Error fetching mechanical seal attributes:', error.response?.data || error.message);
+      if (error.response?.status === 401) {
+        console.log('Authentication failed - please login');
+      }
+      setMechanicalSealAttributes(null);
+    }
+  };
 
   // Fetch product details
   useEffect(() => {
@@ -41,7 +122,14 @@ const ProductDetail = () => {
       try {
         setLoading(true);
         const response = await axios.get(`http://localhost:5000/api/products/${id}`);
-        setProduct(response.data);
+        const productData = response.data;
+        setProduct(productData);
+        
+        // Set initial size selection (first size and first description)
+        if (productData.sizes && productData.sizes.length > 0) {
+          setSelectedSize(productData.sizes[0]);
+          setSelectedSizeIndex(0);
+        }
       } catch (error) {
         console.error("Failed to fetch product:", error);
         toast.error("Failed to load product details");
@@ -65,6 +153,27 @@ const ProductDetail = () => {
       fetchCategories();
     }
   }, [id, navigate]);
+
+  // Add new useEffect to check for mechanical seal and fetch attributes
+  useEffect(() => {
+    console.log('Checking mechanical seal conditions:');
+    console.log('Product:', product);
+    console.log('Categories length:', categories.length);
+    console.log('Product category_id:', product?.category_id);
+    
+    if (product && categories.length > 0) {
+      const isMechSeal = checkIfMechanicalSeal(product.category_id);
+      console.log('Setting isMechanicalSeal to:', isMechSeal);
+      setIsMechanicalSeal(isMechSeal);
+      
+      if (isMechSeal) {
+        console.log('Product is mechanical seal, fetching attributes...');
+        fetchMechanicalSealAttributes(product.id);
+      } else {
+        console.log('Product is not a mechanical seal');
+      }
+    }
+  }, [product, categories]);
 
   // Process product images
   const getProductImages = (product) => {
@@ -316,20 +425,13 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Product ID */}
-            <div className="bg-gray-800 rounded-lg p-4">
-              <p className="text-gray-400 text-sm">
-                Product ID: <span className="text-white font-mono">{product.id}</span>
-              </p>
-            </div>
-
-            {/* Description */}
-            {product.description && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Description</h3>
-                <p className="text-gray-300 leading-relaxed">{product.description}</p>
+            {/* Description - Dynamic based on selected size */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Description</h3>
+              <div className="bg-gray-800 rounded-lg p-4">
+                <p className="text-gray-300 leading-relaxed">{getCurrentDescription()}</p>
               </div>
-            )}
+            </div>
 
             {/* Sizes */}
             {product.sizes && product.sizes.length > 0 && (
@@ -339,9 +441,9 @@ const ProductDetail = () => {
                   {product.sizes.map((size, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedSize(size)}
+                      onClick={() => handleSizeSelection(size, index)}
                       className={`p-3 rounded-lg border-2 transition-all text-center ${
-                        selectedSize === size
+                        selectedSizeIndex === index
                           ? 'border-red-600 bg-red-600 bg-opacity-20 text-red-400'
                           : 'border-gray-600 hover:border-gray-500 text-gray-300'
                       }`}
@@ -349,6 +451,45 @@ const ProductDetail = () => {
                       {size}
                     </button>
                   ))}
+                </div>
+                {/* Show size-specific description hint */}
+                {product.descriptions && product.descriptions.length > 1 && (
+                  <p className="text-sm text-gray-400 mt-2">
+                    💡 Click on different sizes to see specific descriptions
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Mechanical Seal Attributes */}
+            {isMechanicalSeal && mechanicalSealAttributes && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  ⚙️ Mechanical Seal Specifications
+                </h3>
+                <div className="bg-gray-800 rounded-lg p-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-400">Material:</span>
+                        <p className="font-semibold text-white">{mechanicalSealAttributes.material}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-400">Temperature:</span>
+                        <p className="font-semibold text-white">{mechanicalSealAttributes.temperature}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-sm text-gray-400">Pressure:</span>
+                        <p className="font-semibold text-white">{mechanicalSealAttributes.pressure}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-400">Speed:</span>
+                        <p className="font-semibold text-white">{mechanicalSealAttributes.speed}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

@@ -10,7 +10,6 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import FeaturedProducts from "../Home/FeaturedProducts";
 
 const Category = () => {
   const [categories, setCategories] = useState([]);
@@ -340,11 +339,6 @@ const Category = () => {
           </div>
         )}
       </section>
-
-      {/* Featured Products Section */}
-      <div className="bg-gray-900">
-        <FeaturedProducts />
-      </div>
     </div>
   );
 };
