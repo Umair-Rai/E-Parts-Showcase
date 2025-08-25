@@ -22,7 +22,7 @@ export default function Header() {
     <header className="flex flex-wrap items-center justify-between px-4 md:px-8 py-4 bg-black text-white relative z-20">
       {/* Logo + Name */}
       <div className="flex items-center gap-2">
-        <img src="/logo.jpg" alt="Logo" className="h-10 w-20" />
+        <img src="../logo.svg" alt="Logo" className="h-10 w-20" />
         <span className="font-semibold text-3xl">Al Sayyeds Enterprise</span>
       </div>
 
