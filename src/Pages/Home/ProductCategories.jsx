@@ -95,7 +95,7 @@ export default function ProductCategories() {
   }
 
   return (
-    <section className="px-4 md:px-16 py-12 bg-black">
+    <section id="product-categories-section" className="py-16 px-4 md:px-16 bg-black">
       <ToastContainer position="top-right" autoClose={3000} />
       
       {/* Section Header */}
@@ -178,7 +178,7 @@ export default function ProductCategories() {
                 {/* Special Category Badge */}
                 {isSpecial && (
                   <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-lg">
-                    Featured
+                    SPECIAL
                   </div>
                 )}
               </div>

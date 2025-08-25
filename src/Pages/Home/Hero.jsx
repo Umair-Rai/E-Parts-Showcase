@@ -16,6 +16,25 @@ export default function Hero() {
     "/home/p6.jpg",
   ];
 
+  // Function to handle Browse Products button click - scroll to ProductCategories section
+  const handleBrowseProducts = () => {
+    const productCategoriesSection = document.getElementById('product-categories-section');
+    if (productCategoriesSection) {
+      productCategoriesSection.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
+  // Function to handle Learn More button click with smooth scroll
+  const handleLearnMore = () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth'
+    });
+  };
+
   return (
     <div className="relative h-[90vh] w-full overflow-hidden bg-black">
       {/* Swiper Slider */}
@@ -93,10 +112,16 @@ export default function Hero() {
             Supplier of high-quality mechanical and electrical water pump components for industrial applications.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg">
+            <button 
+              onClick={handleBrowseProducts}
+              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-8 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+            >
               Browse Products
             </button>
-            <button className="bg-transparent border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white font-semibold px-8 py-4 rounded-lg transition-all duration-300">
+            <button 
+              onClick={handleLearnMore}
+              className="bg-transparent border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white font-semibold px-8 py-4 rounded-lg transition-all duration-300"
+            >
               Learn More
             </button>
           </div>
