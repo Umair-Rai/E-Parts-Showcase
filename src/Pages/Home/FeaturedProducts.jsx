@@ -148,6 +148,27 @@ function ProductCard({ product, onProductClick, getProductImages }) {
     setImageError(true);
   };
 
+  // Helper function to get product sizes
+  const getProductSizes = (product) => {
+    if (!product.sizes) return [];
+    if (Array.isArray(product.sizes)) return product.sizes;
+    if (typeof product.sizes === 'string') {
+      try {
+        // Handle JSON string arrays like ["size1","size2"]
+        if (product.sizes.startsWith('[')) {
+          return JSON.parse(product.sizes);
+        }
+        // Handle comma-separated strings
+        return product.sizes.split(',').map(size => size.trim()).filter(size => size.length > 0);
+      } catch {
+        return [product.sizes];
+      }
+    }
+    return [];
+  };
+
+  const productSizes = getProductSizes(product);
+
   return (
     <div
       className="
@@ -230,6 +251,30 @@ function ProductCard({ product, onProductClick, getProductImages }) {
           <p className="text-gray-400 text-sm mt-2 line-clamp-2">
             {product.description}
           </p>
+        )}
+
+        {/* Product Sizes */}
+        {productSizes.length > 0 && (
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">
+              Available Sizes
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {productSizes.slice(0, 4).map((size, index) => (
+                <span
+                  key={index}
+                  className="inline-block px-2 py-1 bg-gray-800 text-gray-300 text-xs rounded-md border border-gray-700"
+                >
+                  {size}
+                </span>
+              ))}
+              {productSizes.length > 4 && (
+                <span className="inline-block px-2 py-1 bg-gray-700 text-gray-400 text-xs rounded-md border border-gray-600">
+                  +{productSizes.length - 4} more
+                </span>
+              )}
+            </div>
+          </div>
         )}
 
         <div className="mt-auto flex items-center justify-between pt-4">
