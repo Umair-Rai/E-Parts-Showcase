@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import { 
   ClipboardDocumentListIcon,
   EyeIcon, 
@@ -151,7 +151,6 @@ const ManageOrders = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <ToastContainer position="top-right" autoClose={3000} />
       
       {/* Header Section */}
       <div className="mb-8">

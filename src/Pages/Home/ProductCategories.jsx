@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { ArrowRightIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import { useNavigate } from "react-router-dom";
@@ -85,7 +85,6 @@ export default function ProductCategories() {
   if (loading) {
     return (
       <section className="px-4 md:px-16 py-12 bg-black">
-        <ToastContainer position="top-right" autoClose={3000} />
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-red-600 mx-auto mb-4"></div>
           <p className="text-gray-300 text-lg">Loading categories...</p>
@@ -96,7 +95,6 @@ export default function ProductCategories() {
 
   return (
     <section id="product-categories-section" className="py-16 px-4 md:px-16 bg-black">
-      <ToastContainer position="top-right" autoClose={3000} />
       
       {/* Section Header */}
       <div className="text-center mb-10">

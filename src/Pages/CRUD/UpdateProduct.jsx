@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   PencilIcon,
@@ -741,9 +741,7 @@ const UpdateProduct = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <ToastContainer position="top-right" autoClose={3000} />
-      
+    <div className="p-6 bg-gray-50 min-h-screen">      
       {/* Header Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between">

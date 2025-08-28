@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowRightIcon, EyeIcon, ShoppingCartIcon, StarIcon } from '@heroicons/react/24/outline';
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from "react-router-dom";
 
@@ -82,7 +82,6 @@ export default function FeaturedProducts() {
   if (loading) {
     return (
       <section className="px-4 md:px-16 py-12 bg-black">
-        <ToastContainer position="top-right" autoClose={3000} />
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-red-600 mx-auto mb-4"></div>
           <p className="text-gray-300 text-lg">Loading featured products...</p>
@@ -93,7 +92,6 @@ export default function FeaturedProducts() {
 
   return (
     <section className="px-4 md:px-16 py-12 bg-black">
-      <ToastContainer position="top-right" autoClose={3000} />
       
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
