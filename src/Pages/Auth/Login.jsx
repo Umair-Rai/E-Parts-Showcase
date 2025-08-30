@@ -36,6 +36,10 @@ const Login = () => {
 
       if (response.status === 200) {
         localStorage.setItem("token", response.data.token);
+        
+        // Dispatch custom event to notify Header component
+        window.dispatchEvent(new Event('authStateChanged'));
+        
         toast.success("Login successful! Welcome back.");
         setTimeout(() => {
           navigate("/");

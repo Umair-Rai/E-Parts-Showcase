@@ -30,14 +30,19 @@ const Signup = () => {
   };
 
   const validateForm = () => {
+    // Password complexity validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    
+    if (!passwordRegex.test(formData.password)) {
+      setError("Password must be at least 8 characters long and contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (@$!%*?&)");
+      return false;
+    }
+    
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return false;
     }
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
-      return false;
-    }
+    
     return true;
   };
 
@@ -202,7 +207,7 @@ const Signup = () => {
                   onChange={handleChange}
                   required
                   className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition duration-200"
-                  placeholder="Create a password"
+                  placeholder="Enter your password"
                 />
                 <button
                   type="button"
@@ -216,6 +221,9 @@ const Signup = () => {
                   )}
                 </button>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Password must contain: atleast 8 letter + numbers + special characters
+              </p>
             </div>
 
             {/* Confirm Password Field */}
