@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify"; // Keep toast import, remove ToastContainer
 import {
   ArrowLeftIcon,
   ShoppingCartIcon,
   HeartIcon,
   ShareIcon,
+  StarIcon,
   MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
 import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
 const ProductDetail = () => {
@@ -96,7 +97,7 @@ const ProductDetail = () => {
       }
       
       const response = await axios.get(
-        `http://localhost:5000/api/mechanical-seals/${productId}`,
+        `http://localhost:5000/api/mechanical-seal-attributes/${productId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -173,18 +174,6 @@ const ProductDetail = () => {
       }
     }
   }, [product, categories]);
-
-  // Add keyboard support useEffect inside the component
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (e.key === 'Escape' && showImageModal) {
-        setShowImageModal(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [showImageModal]);
 
   // Process product images
   const getProductImages = (product) => {
@@ -311,6 +300,8 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      <ToastContainer position="top-right" theme="dark" />
+      
       {/* Header */}
       <div className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -418,7 +409,9 @@ const ProductDetail = () => {
               <p className="text-red-400 text-sm font-medium mb-2">
                 {getCategoryName(product.category_id)}
               </p>
-              <h1 className="text-3xl font-bold text-white mb-4">{product.name}</h1>
+              <h1 className="text-3xl font-bold text-white mb-4">Model: {product.name}</h1>
+              <div className="flex items-center space-x-4">
+              </div>
             </div>
 
             {/* Description - Dynamic based on selected size */}
@@ -429,24 +422,25 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* Sizes */}
+            {/* Sizes */}           
             {product.sizes && product.sizes.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3">Available Sizes</h3>
                 <div className="grid grid-cols-4 gap-2">
-                  {product.sizes.map((size, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleSizeSelection(size, index)}
-                      className={`p-3 rounded-lg border-2 transition-all text-center ${
-                        selectedSizeIndex === index
-                          ? 'border-red-600 bg-red-600 bg-opacity-20 text-red-400'
-                          : 'border-gray-600 hover:border-gray-500 text-gray-300'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                    <select
+                        value={selectedSize}
+                        onChange={(e) => {
+                          const index = product.sizes.indexOf(e.target.value);
+                          handleSizeSelection(e.target.value, index);
+                        }}
+                        className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
+                      >
+                        {product.sizes.map((size, index) => (
+                          <option key={index} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                  </select>
                 </div>
                 {/* Show size-specific description hint */}
                 {product.descriptions && product.descriptions.length > 1 && (
@@ -509,7 +503,6 @@ const ProductDetail = () => {
                     +
                   </button>
                 </div>
-                <p className="text-gray-400 text-sm">In stock</p>
               </div>
             </div>
 
@@ -525,62 +518,60 @@ const ProductDetail = () => {
                 </button>
                 <button
                   onClick={handleBuyNow}
-                  className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
+                  className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
                 >
                   <span>Buy Now</span>
                 </button>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={handleInquiry}
+                className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
+              >
+                <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                <span>Send Inquiry</span>
+              </button>
+              
+              <div className="flex space-x-4">
                 <button
                   onClick={() => setIsWishlisted(!isWishlisted)}
-                  className={`flex items-center justify-center space-x-2 py-3 px-6 rounded-lg font-semibold transition-colors border-2 ${
-                    isWishlisted
-                      ? 'border-red-600 bg-red-600 bg-opacity-20 text-red-400'
-                      : 'border-gray-600 text-gray-300 hover:border-gray-500'
-                  }`}
+                  className="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors"
                 >
                   {isWishlisted ? (
-                    <HeartSolid className="h-5 w-5" />
+                    <HeartSolid className="h-5 w-5 text-red-400" />
                   ) : (
                     <HeartIcon className="h-5 w-5" />
                   )}
-                  <span>{isWishlisted ? 'Wishlisted' : 'Add to Wishlist'}</span>
+                  <span>Wishlist</span>
                 </button>
-                <button
-                  onClick={handleInquiry}
-                  className="flex items-center justify-center space-x-2 border-2 border-gray-600 text-gray-300 hover:border-gray-500 py-3 px-6 rounded-lg font-semibold transition-colors"
-                >
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                  <span>Inquiry</span>
+                <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
+                  <ShareIcon className="h-5 w-5" />
+                  <span>Share</span>
                 </button>
               </div>
             </div>
 
-            {/* Product Features */}
-            <div className="border-t border-gray-700 pt-6">
-              <h3 className="text-lg font-semibold mb-4">Product Features</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center space-x-3">
-                  <TruckIcon className="h-6 w-6 text-green-400" />
-                  <div>
-                    <p className="font-medium">Free Shipping</p>
-                    <p className="text-sm text-gray-400">On orders over $100</p>
-                  </div>
+            {/* Features */}
+            <div className="bg-gray-800 rounded-lg p-6 space-y-4">
+              <div className="flex items-center space-x-3">
+                <TruckIcon className="h-6 w-6 text-green-400" />
+                <div>
+                  <p className="font-semibold">Free Shipping</p>
+                  <p className="text-gray-400 text-sm">On orders over $100</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <ShieldCheckIcon className="h-6 w-6 text-blue-400" />
-                  <div>
-                    <p className="font-medium">Quality Guarantee</p>
-                    <p className="text-sm text-gray-400">30-day return policy</p>
-                  </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <ShieldCheckIcon className="h-6 w-6 text-blue-400" />
+                <div>
+                  <p className="font-semibold">Quality Guarantee</p>
+                  <p className="text-gray-400 text-sm">30-day return policy</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <InformationCircleIcon className="h-6 w-6 text-yellow-400" />
-                  <div>
-                    <p className="font-medium">Expert Support</p>
-                    <p className="text-sm text-gray-400">24/7 customer service</p>
-                  </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <InformationCircleIcon className="h-6 w-6 text-yellow-400" />
+                <div>
+                  <p className="font-semibold">Expert Support</p>
+                  <p className="text-gray-400 text-sm">24/7 customer service</p>
                 </div>
               </div>
             </div>
@@ -588,47 +579,25 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* Enhanced Image Modal */}
+      {/* Image Modal */}
       {showImageModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowImageModal(false)} // Click outside to close
-        >
-          <div className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
-            {/* Enhanced Close Button */}
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+          <div className="relative max-w-4xl max-h-full">
             <button
               onClick={() => setShowImageModal(false)}
-              className="absolute -top-12 right-0 text-white hover:text-red-400 z-10 bg-black bg-opacity-50 rounded-full p-2 transition-colors"
-              title="Close (Press Esc)"
+              className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
             >
               <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            
-            {/* Alternative close button inside the modal */}
-            <button
-              onClick={() => setShowImageModal(false)}
-              className="absolute top-4 right-4 text-white hover:text-red-400 z-10 bg-black bg-opacity-70 rounded-full p-2 transition-colors"
-              title="Close"
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
             {productImages.length > 0 && !imageLoadErrors[selectedImageIndex] && (
               <img
                 src={productImages[selectedImageIndex]}
                 alt={`${product.name} - Full size`}
-                className="max-w-full max-h-full object-contain cursor-pointer"
-                onClick={() => setShowImageModal(false)} // Click image to close
+                className="max-w-full max-h-full object-contain"
               />
             )}
-            
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black bg-opacity-50 px-4 py-2 rounded-full">
-              Click anywhere or press ESC to close
-            </div>
           </div>
         </div>
       )}

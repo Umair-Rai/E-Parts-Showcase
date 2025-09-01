@@ -130,30 +130,43 @@ const AccountSettings = () => {
   };
 
   const handleCreateAdmin = async () => {
-    const { name, email, password, confirmPassword, role } = newAdmin;
+    const { name, email, password, confirmPassword } = newAdmin;
+    
+    // Add console log for debugging
+    console.log('Create Admin button clicked', { name, email, password, confirmPassword });
     
     if (!name || !email || !password || !confirmPassword) {
-      return toast.error("❗ Please fill all fields");
+      toast.error("❗ Please fill all fields");
+      return;
     }
     if (password !== confirmPassword) {
-      return toast.error("❌ Passwords do not match");
+      toast.error("❌ Passwords do not match");
+      return;
     }
     if (password.length < 6) {
-      return toast.error("❌ Password must be at least 6 characters long");
+      toast.error("❌ Password must be at least 6 characters long");
+      return;
     }
 
     try {
-      // Fixed API endpoint and field names to match database schema
-      await axios.post('http://localhost:5000/api/auth/register', {
+      console.log('Sending request to create admin...');
+      
+      const response = await axios.post('http://localhost:5000/api/auth/register', {
         name,
         email,
         password,
-        role
+        role: 'admin'
       }, {
-        headers: { Authorization: `Bearer ${adminToken}` },
+        headers: { 
+          Authorization: `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
       });
       
+      console.log('Admin created successfully:', response.data);
       toast.success("✅ Admin account created successfully");
+      
       setNewAdmin({
         name: "",
         email: "",
@@ -164,12 +177,28 @@ const AccountSettings = () => {
       setShowCreateAdmin(false);
       
       // Refresh admin list
-      const allAdminsRes = await axios.get('http://localhost:5000/api/admin', {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-      setAllAdmins(allAdminsRes.data);
+      try {
+        const allAdminsRes = await axios.get('http://localhost:5000/api/admin', {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        setAllAdmins(allAdminsRes.data);
+      } catch (refreshError) {
+        console.error('Failed to refresh admin list:', refreshError);
+        toast.warning("⚠️ Admin created but failed to refresh list. Please reload the page.");
+      }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "❌ Failed to create admin account");
+      console.error('Error creating admin:', err);
+      
+      if (err.code === 'ECONNABORTED') {
+        toast.error("❌ Request timeout - server not responding");
+      } else if (err.response) {
+        const errorMessage = err.response.data?.message || err.response.data?.error || 'Failed to create admin account';
+        toast.error(`❌ ${errorMessage}`);
+      } else if (err.request) {
+        toast.error("❌ Network error - please check your connection");
+      } else {
+        toast.error("❌ An unexpected error occurred");
+      }
     }
   };
 
@@ -460,36 +489,65 @@ const AccountSettings = () => {
                     type="text"
                     placeholder="Admin Name"
                     value={newAdmin.name}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Name changed:', e.target.value);
+                      setNewAdmin({ ...newAdmin, name: e.target.value });
+                    }}
                   />
                   <Input
                     type="email"
                     placeholder="Admin Email"
                     value={newAdmin.email}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Email changed:', e.target.value);
+                      setNewAdmin({ ...newAdmin, email: e.target.value });
+                    }}
                   />
                   <Input
                     type="password"
                     placeholder="Password"
                     value={newAdmin.password}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Password changed');
+                      setNewAdmin({ ...newAdmin, password: e.target.value });
+                    }}
                   />
                   <Input
                     type="password"
                     placeholder="Confirm Password"
                     value={newAdmin.confirmPassword}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, confirmPassword: e.target.value })}
+                    onChange={(e) => {
+                      console.log('Confirm password changed');
+                      setNewAdmin({ ...newAdmin, confirmPassword: e.target.value });
+                    }}
                   />
                 </div>
                 <div className="flex gap-3 mt-4">
                   <button
-                    onClick={handleCreateAdmin}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      console.log('Create Admin button clicked - event triggered');
+                      handleCreateAdmin();
+                    }}
+                    disabled={loading}
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition"
                   >
-                    Create Admin
+                    {loading ? 'Creating...' : 'Create Admin'}
                   </button>
                   <button
-                    onClick={() => setShowCreateAdmin(false)}
+                    type="button"
+                    onClick={() => {
+                      console.log('Cancel button clicked');
+                      setShowCreateAdmin(false);
+                      setNewAdmin({
+                        name: "",
+                        email: "",
+                        password: "",
+                        confirmPassword: "",
+                        role: "admin"
+                      });
+                    }}
                     className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition"
                   >
                     Cancel
