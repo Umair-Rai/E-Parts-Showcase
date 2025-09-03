@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -23,6 +23,64 @@ const Cart = () => {
   const [updating, setUpdating] = useState(false);
 
   // Process product images similar to Product.jsx
+  const processProductImages = (product) => {
+    if (!product.pic) return [];
+    
+    try {
+      const images = JSON.parse(product.pic);
+      return Array.isArray(images) ? images : [images];
+    } catch (error) {
+      console.error('Error parsing product images:', error);
+      return [product.pic];
+    }
+  };
+
+  const constructImageUrls = (images) => {
+    if (!images || images.length === 0) return [];
+    
+    const constructedUrls = images.map(image => {
+      if (image.startsWith('http')) {
+        return image;
+      }
+      return `http://localhost:5000/uploads/products/${image}`;
+    });
+
+    return constructedUrls;
+  };
+
+  // Navigate to product details
+  const handleProductClick = (productId) => {
+    navigate(`/product/${productId}`);
+  };
+
+  // Fetch cart items - wrapped with useCallback to fix hoisting issue
+  const fetchCartItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `http://localhost:5000/api/cart/${user.id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      setCartItems(response.data);
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      toast.error('Failed to load cart items');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    fetchCartItems();
+  }, [isAuthenticated, user, navigate, fetchCartItems]);
+
   const getProductImages = (product) => {
     if (!product.pic) return [];  
     
@@ -64,34 +122,6 @@ const Cart = () => {
     });
 
     return constructedUrls;
-  };
-
-  // Fetch cart items
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-    fetchCartItems();
-  }, [isAuthenticated, user, navigate, fetchCartItems]);
-
-  const fetchCartItems = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:5000/api/cart/${user.id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      setCartItems(response.data);
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-      toast.error('Failed to load cart items');
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Handle item selection
@@ -294,8 +324,11 @@ const Cart = () => {
                         className="w-5 h-5 text-red-600 bg-gray-700 border-gray-600 rounded focus:ring-red-500"
                       />
                       
-                      {/* Product Image */}
-                      <div className="w-20 h-20 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
+                      {/* Product Image - Clickable */}
+                      <div 
+                        className="w-20 h-20 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => handleProductClick(item.product_id)}
+                      >
                         <img
                           src={imageUrl}
                           alt={item.name}
@@ -306,8 +339,11 @@ const Cart = () => {
                         />
                       </div>
                       
-                      {/* Product Info */}
-                      <div className="flex-1">
+                      {/* Product Info - Clickable */}
+                      <div 
+                        className="flex-1 cursor-pointer hover:text-red-400 transition-colors"
+                        onClick={() => handleProductClick(item.product_id)}
+                      >
                         <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
                         <p className="text-gray-400 text-sm mb-2">{item.category_name}</p>
                         {item.size && (
