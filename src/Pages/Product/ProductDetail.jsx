@@ -82,37 +82,20 @@ const ProductDetail = () => {
     return isMechanical;
   }, [categories]);
   
-  // Fetch mechanical seal attributes with authentication
+  // Fetch mechanical seal attributes without authentication
   const fetchMechanicalSealAttributes = async (productId) => {
     try {
       console.log('Fetching mechanical seal attributes for product:', productId);
       
-      // Get auth token from localStorage
-      const token = localStorage.getItem('token');
-      console.log('Auth token found:', !!token);
-      
-      if (!token) {
-        console.log('No authentication token found');
-        setMechanicalSealAttributes(null);
-        return;
-      }
-      
       const response = await axios.get(
-        `http://localhost:5000/api/mechanical-seal-attributes/${productId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        `http://localhost:5000/api/mechanical-seal-attributes/${productId}`
       );
       
       console.log('Mechanical seal attributes response:', response.data);
       setMechanicalSealAttributes(response.data);
     } catch (error) {
       console.log('Error fetching mechanical seal attributes:', error.response?.data || error.message);
-      if (error.response?.status === 401) {
-        console.log('Authentication failed - please login');
-      }
+      // Set to null if attributes are not found, but don't prevent display
       setMechanicalSealAttributes(null);
     }
   };
@@ -452,15 +435,53 @@ const ProductDetail = () => {
 
           {/* Product Information */}
           <div className="space-y-6">
-            {/* Product Title and Category */}
-            <div>
-              <p className="text-red-400 text-sm font-medium mb-2">
-                {getCategoryName(product.category_id)}
-              </p>
-              <h1 className="text-3xl font-bold text-white mb-4">Model: {product.name}</h1>
-              <div className="flex items-center space-x-4">
+            {/* 2-Column Grid Layout */}
+            <div className="grid grid-cols-2 gap-y-4">
+                {/* First Row - Labels */}
+                <div className="flex items-center justify-between col-span-2">
+                  <p className="text-red-400 text-sm font-medium">
+                    {getCategoryName(product.category_id)}
+                  </p>
+                  {product.sizes && product.sizes.length > 0 && (
+                    <p className="text-sm font-semibold">Available Sizes</p>
+                  )}
+                </div>
+                
+                {/* Second Row - Product Title */}
+                <div className="flex items-center justify-between col-span-2">
+                  <h1 className="font-bold text-white truncate max-w-[70%]" style={{ fontSize: product.name.length > 20 ? "1.25rem" : "1.75rem",}}
+                  >Model: {product.name}</h1>
+                
+
+              
+              {/* Second Column - Size Dropdown */}
+                {product.sizes && product.sizes.length > 0 && (
+                  <select
+                    value={selectedSize}
+                    onChange={(e) => {
+                      const index = product.sizes.indexOf(e.target.value);
+                      handleSizeSelection(e.target.value, index);
+                    }}
+                    className="w-28 p-2 bg-gray-800 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-red-500"
+                  >
+                    {product.sizes.map((size, index) => (
+                      <option key={index} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
-            </div>
+              </div>
+
+            {/* Size hint text */}
+            {product.sizes && product.sizes.length > 0 && product.descriptions && product.descriptions.length > 1 && (
+              <div>
+                <p className="text-sm text-gray-400">
+                  💡 Click on different sizes to see specific descriptions
+                </p>
+              </div>
+            )}
 
             {/* Description - Dynamic based on selected size */}
             <div>
@@ -469,35 +490,6 @@ const ProductDetail = () => {
                 <p className="text-gray-300 leading-relaxed">{getCurrentDescription()}</p>
               </div>
             </div>
-
-            {/* Sizes */}           
-            {product.sizes && product.sizes.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Available Sizes</h3>
-                <div className="grid grid-cols-4 gap-2">
-                    <select
-                        value={selectedSize}
-                        onChange={(e) => {
-                          const index = product.sizes.indexOf(e.target.value);
-                          handleSizeSelection(e.target.value, index);
-                        }}
-                        className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
-                      >
-                        {product.sizes.map((size, index) => (
-                          <option key={index} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                  </select>
-                </div>
-                {/* Show size-specific description hint */}
-                {product.descriptions && product.descriptions.length > 1 && (
-                  <p className="text-sm text-gray-400 mt-2">
-                    💡 Click on different sizes to see specific descriptions
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Mechanical Seal Attributes */}
             {isMechanicalSeal && mechanicalSealAttributes && (
@@ -556,47 +548,13 @@ const ProductDetail = () => {
 
             {/* Action Buttons */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={handleAddToCart}
-                  className="flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
+                  className="w-full flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
                 >
                   <ShoppingCartIcon className="h-5 w-5" />
                   <span>{addingToCart ? 'Adding...' : 'Add to Cart'}</span>
                 </button>
-                <button
-                  onClick={handleBuyNow}
-                  className="flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
-                >
-                  <span>Buy Now</span>
-                </button>
-              </div>
-              
-              <button
-                onClick={handleInquiry}
-                className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
-              >
-                <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                <span>Send Inquiry</span>
-              </button>
-              
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setIsWishlisted(!isWishlisted)}
-                  className="flex items-center space-x-2 text-gray-400 hover:text-red-400 transition-colors"
-                >
-                  {isWishlisted ? (
-                    <HeartSolid className="h-5 w-5 text-red-400" />
-                  ) : (
-                    <HeartIcon className="h-5 w-5" />
-                  )}
-                  <span>Wishlist</span>
-                </button>
-                <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
-                  <ShareIcon className="h-5 w-5" />
-                  <span>Share</span>
-                </button>
-              </div>
             </div>
 
             {/* Features */}
@@ -629,13 +587,19 @@ const ProductDetail = () => {
 
       {/* Image Modal */}
       {showImageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-          <div className="relative max-w-4xl max-h-full">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div 
+            className="relative max-w-4xl max-h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setShowImageModal(false)}
               className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
             >
-              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="Red">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

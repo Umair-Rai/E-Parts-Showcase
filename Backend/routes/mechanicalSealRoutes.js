@@ -5,17 +5,16 @@ const mechanicalSealController = require('../controllers/mechanicalSealControlle
 const { requireAuth } = require('../middleware/authMiddleware');
 const { validateRequest } = require('../middleware/validate');
 
-router.use(requireAuth);
-
-// Get mechanical seal attributes by product ID
+// Get mechanical seal attributes by product ID (public access)
 router.get(
     '/:productId',
     mechanicalSealController.getMechanicalSealAttributesByProductId
 );
 
-// Create mechanical seal attributes
+// Create mechanical seal attributes (requires authentication)
 router.post(
     '/',
+    requireAuth,
     [
         body('productId')
             .isInt()
