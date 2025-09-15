@@ -21,22 +21,24 @@ const getMechanicalSealAttributesByProductId = asyncHandler(async (req, res) => 
 });
 
 const createMechanicalSealAttributes = asyncHandler(async (req, res) => {
-    const { productId, material, temperature, pressure, speed } = req.body;
+    const { productId,sizes, descriptions, material, temperature, pressure, speed } = req.body;
 
-    if (!productId || !material || !temperature || !pressure || !speed) {
+    if (!productId ||!sizes ||!descriptions ||!material || !temperature || !pressure || !speed) {
         res.status(400);
         throw new Error('All mechanical seal attributes are required');
     }
 
     const query = `
         INSERT INTO mechanical_seal_attributes 
-        (product_id, material, temperature, pressure, speed)
-        VALUES ($1, $2, $3, $4, $5)
+        (product_id,sizes, descriptions, material, temperature, pressure, speed)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
     `;
 
     const result = await pool.query(query, [
         productId,
+        Array.isArray(sizes) ? sizes : [sizes],
+        Array.isArray(descriptions) ? descriptions : [descriptions],
         material,
         temperature,
         pressure,

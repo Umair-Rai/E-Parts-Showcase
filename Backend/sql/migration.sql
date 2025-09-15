@@ -48,6 +48,8 @@ CREATE TABLE product (
 CREATE TABLE mechanical_seal_attributes (
     id SERIAL PRIMARY KEY,
     product_id INT REFERENCES product(id) ON DELETE CASCADE,
+    sizes TEXT[] NOT NULL,
+    descriptions TEXT[] NOT NULL,
     material VARCHAR(255) NOT NULL,
     temperature VARCHAR(50) NOT NULL,
     pressure VARCHAR(50) NOT NULL,

@@ -51,6 +51,11 @@ const AddProduct = () => {
     }
   });
 
+  // For technical specifications (separate from mechanical seal attributes)
+  const [technicalSpecs, setTechnicalSpecs] = useState([
+    { size: '', description: '' }
+  ]);
+
   // Fetch categories on component mount
   useEffect(() => {
     fetchCategories();
@@ -129,6 +134,7 @@ const AddProduct = () => {
           speed: ''
         }
       });
+      setTechnicalSpecs([{ size: '', description: '' }]);
     }
   };
 
@@ -173,6 +179,25 @@ const AddProduct = () => {
     });
   };
 
+  // Technical Specifications functions
+  const addTechnicalSpec = () => {
+    setTechnicalSpecs([...technicalSpecs, { size: '', description: '' }]);
+  };
+
+  const removeTechnicalSpec = (index) => {
+    if (technicalSpecs.length > 1) {
+      const updated = [...technicalSpecs];
+      updated.splice(index, 1);
+      setTechnicalSpecs(updated);
+    }
+  };
+
+  const handleTechnicalSpecChange = (index, field, value) => {
+    const updated = [...technicalSpecs];
+    updated[index][field] = value;
+    setTechnicalSpecs(updated);
+  };
+
   const validateForm = () => {
     if (!form.productName.trim()) {
       toast.error('Product name is required');
@@ -199,6 +224,16 @@ const AddProduct = () => {
       const { material, temperature, pressure, speed } = mechanicalSealData.attributes;
       if (!material.trim() || !temperature.trim() || !pressure.trim() || !speed.trim()) {
         toast.error('All mechanical seal attributes are required');
+        return false;
+      }
+
+      // Validate technical specifications
+      const hasValidTechnicalSpec = technicalSpecs.some(
+        spec => spec.size.trim() && spec.description.trim()
+      );
+      
+      if (!hasValidTechnicalSpec) {
+        toast.error('At least one technical specification with size and description is required');
         return false;
       }
     } else {
@@ -248,9 +283,9 @@ const AddProduct = () => {
         formData.append('descriptions', JSON.stringify([regularProduct.description.trim()]));
       }
 
-      // ✅ SOLUTION: Change frontend to match backend
+      // Fix: Append images with correct field name
       images.forEach((file) => {
-        formData.append('productImages', file);  // Match backend expectation
+        formData.append('productImages', file);
       });
 
       const productResponse = await axios.post(
@@ -267,10 +302,21 @@ const AddProduct = () => {
       const productId = productResponse.data.id;
 
       if (isMechanicalSeal()) {
+        // Prepare sizes and descriptions from technical specifications
+        const specSizes = technicalSpecs
+          .filter(spec => spec.size.trim())
+          .map(spec => spec.size.trim());
+        const specDescriptions = technicalSpecs
+          .filter(spec => spec.description.trim())
+          .map(spec => spec.description.trim());
+
+        // Send all mechanical seal data in one API call
         await axios.post(
           'http://localhost:5000/api/mechanical-seal-attributes',
           {
             productId,
+            sizes: specSizes,
+            descriptions: specDescriptions,
             ...mechanicalSealData.attributes
           },
           {
@@ -291,6 +337,7 @@ const AddProduct = () => {
         sizeDescriptions: [{ size: '', description: '' }],
         attributes: { material: '', temperature: '', pressure: '', speed: '' }
       });
+      setTechnicalSpecs([{ size: '', description: '' }]);
       setImages([]);
       setCurrentStep(1);
       
@@ -772,6 +819,68 @@ const AddProduct = () => {
                             required
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Technical Specifications - Size & Description Variations */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-md font-medium text-gray-900 flex items-center">
+                          <DocumentTextIcon className="h-4 w-4 mr-2 text-indigo-600" />
+                          Technical Specifications - Size & Description Variations
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={addTechnicalSpec}
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-1" />
+                          Add Specification
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {technicalSpecs.map((spec, index) => (
+                          <div key={index} className="relative bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Specification Size {index + 1} *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., 12mm, 25mm, 1 inch"
+                                  value={spec.size}
+                                  onChange={(e) => handleTechnicalSpecChange(index, 'size', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Specification Description {index + 1} *
+                                </label>
+                                <textarea
+                                  placeholder="Technical description for this specification"
+                                  rows={2}
+                                  value={spec.description}
+                                  onChange={(e) => handleTechnicalSpecChange(index, 'description', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                                  required
+                                />
+                              </div>
+                            </div>
+                            {technicalSpecs.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeTechnicalSpec(index)}
+                                className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>

@@ -19,6 +19,12 @@ router.post(
         body('productId')
             .isInt()
             .withMessage('Product ID must be an integer'),
+        body('sizes')
+            .notEmpty()
+            .withMessage('Sizes is required'),
+        body('descriptions')
+            .notEmpty()
+            .withMessage('Descriptions is required'),
         body('material')
             .notEmpty()
             .withMessage('Material is required'),

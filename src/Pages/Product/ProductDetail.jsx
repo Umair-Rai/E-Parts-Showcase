@@ -497,7 +497,26 @@ const ProductDetail = () => {
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   ⚙️ Mechanical Seal Specifications
                 </h3>
-                <div className="bg-gray-800 rounded-lg p-6 space-y-4">
+                
+                {/* First div: Current specifications */}
+                <div className="bg-gray-800 rounded-lg p-6 space-y-4 mb-4">
+                                  {mechanicalSealAttributes.sizes && mechanicalSealAttributes.descriptions && (
+                  <div className="bg-gray-800 rounded-lg p-6">
+                    <h4 className="text-md font-semibold mb-4 text-white">Descriptions</h4>
+                    <div className="space-y-3">
+                      {mechanicalSealAttributes.sizes.map((size, index) => (
+                        <div key={index}>
+                          <p className="text-gray-300">
+                            <span className="font-medium text-white">
+                              {mechanicalSealAttributes.descriptions[index] || 'No description available'}
+                            </span>
+                            : <span className="text-red-400 font-semibold">{size}</span>
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-3">
                       <div>
@@ -521,6 +540,8 @@ const ProductDetail = () => {
                     </div>
                   </div>
                 </div>
+                
+
               </div>
             )}
 
