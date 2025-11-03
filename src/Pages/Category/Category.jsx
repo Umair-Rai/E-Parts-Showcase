@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import { useNavigate } from "react-router-dom";
 import {
   Squares2X2Icon,
   StarIcon,
@@ -12,6 +13,7 @@ import {
 import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
 
 const Category = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,12 +24,13 @@ const Category = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/categories");
+      const response = await axios.get("https://eme6.com/api/categories");
       console.log('📊 Fetched categories:', response.data);
       setCategories(response.data);
     } catch (error) {
       console.error("❌ Failed to fetch categories:", error);
-      toast.error("Failed to load categories. Please try again later.");
+      // ✅ No toast error - silently handle failure
+      setCategories([]); // Set empty array
     } finally {
       setLoading(false);
     }
@@ -35,6 +38,31 @@ const Category = () => {
 
   useEffect(() => {
     fetchCategories();
+    
+    // ✅ Listen for category updates
+    const handleCategoryUpdate = () => {
+      console.log('🔄 Category updated, refreshing...');
+      fetchCategories();
+    };
+    
+    // ✅ Listen for footer category click
+    const handleFooterCategorySearch = (event) => {
+      const categoryName = event.detail.categoryName;
+      console.log('🔍 Footer category clicked:', categoryName);
+      setSearchQuery(categoryName);
+      // Scroll to search area
+      setTimeout(() => {
+        window.scrollTo({ top: 200, behavior: 'smooth' });
+      }, 100);
+    };
+    
+    window.addEventListener('categoryUpdated', handleCategoryUpdate);
+    window.addEventListener('footerCategorySearch', handleFooterCategorySearch);
+    
+    return () => {
+      window.removeEventListener('categoryUpdated', handleCategoryUpdate);
+      window.removeEventListener('footerCategorySearch', handleFooterCategorySearch);
+    };
   }, []);
 
   // Helper function to check if category is special
@@ -43,6 +71,11 @@ const Category = () => {
            category.special_category === 'true' || 
            category.specialCategory === true || 
            category.specialCategory === 'true';
+  };
+
+  // Handle category click - navigate to product page with category filter
+  const handleCategoryClick = (categoryId) => {
+    navigate(`/product?category=${categoryId}`);
   };
 
   // Helper function to get category images with proper URL construction
@@ -79,7 +112,7 @@ const Category = () => {
       }
       // Handle both /uploads/categories/filename and uploads/categories/filename
       const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-      const fullUrl = `http://localhost:5000${cleanPath}`;
+      const fullUrl = `https://eme6.com${cleanPath}`;
       console.log('🔗 Constructed URL:', fullUrl);
       return fullUrl;
     });
@@ -151,7 +184,7 @@ const Category = () => {
                 placeholder="Search categories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-black border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent text-white placeholder-gray-400"
+                className="w-full pl-10 pr-4 py-3 bg-black border-0 rounded-lg focus:ring-0 focus:outline-none text-white placeholder-gray-400"
               />
             </div>
             
@@ -215,6 +248,7 @@ const Category = () => {
               return (
                 <div
                   key={category.id}
+                  onClick={() => handleCategoryClick(category.id)}
                   className={`group relative bg-gray-900 rounded-xl shadow-lg hover:shadow-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] border cursor-pointer ${
                     isSpecial 
                       ? 'border-red-600 shadow-red-900/20 hover:shadow-red-900/40' 

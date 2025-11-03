@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   UserIcon,
   KeyIcon,
@@ -27,7 +28,7 @@ const AccountSettings = () => {
   const adminId = adminData?.id;
 
   // Current admin state - Fixed field names to match database schema
-  const [admin, setAdmin] = useState({ name: "", email: "" });
+  const [admin, setAdmin] = useState({ name: "", email: "", role: "" });
   const [passwords, setPasswords] = useState({ old: "", new: "", confirm: "" });
   const [showPasswords, setShowPasswords] = useState({ old: false, new: false, confirm: false });
   
@@ -44,6 +45,7 @@ const AccountSettings = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
 
+
   // Load current admin info and all admins
   useEffect(() => {
     if (!adminToken || !adminId) {
@@ -56,13 +58,14 @@ const AccountSettings = () => {
         setLoading(true);
         
         // Fetch current admin - Fixed API endpoint
-        const adminRes = await axios.get(`http://localhost:5000/api/admin/${adminId}`, {
+        const adminRes = await axios.get(`https://eme6.com/api/admin/${adminId}`, {
           headers: { Authorization: `Bearer ${adminToken}` },
         });
+        console.log('Fetched admin data:', adminRes.data);
         setAdmin(adminRes.data);
         
         // Fetch all admins - Fixed API endpoint
-        const allAdminsRes = await axios.get('http://localhost:5000/api/admin', {
+        const allAdminsRes = await axios.get('https://eme6.com/api/admin', {
           headers: { Authorization: `Bearer ${adminToken}` },
         });
         setAllAdmins(allAdminsRes.data);
@@ -77,18 +80,36 @@ const AccountSettings = () => {
   }, [adminId, adminToken, navigate]);
 
   const handleProfileUpdate = async () => {
+    if (!admin.name.trim() || !admin.email.trim()) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!admin.email.includes('@')) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     try {
-      // Fixed API endpoint and field names
-      await axios.put(`http://localhost:5000/api/admin/${adminId}`, admin, {
+      setLoading(true);
+      console.log('Updating admin profile:', { adminId, admin });
+      
+      const response = await axios.put(`https://eme6.com/api/admin/${adminId}`, admin, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
+      
+      console.log('Profile update response:', response.data);
       toast.success("✅ Profile updated successfully");
       
-      // Update localStorage
-      const updatedAdminData = { ...adminData, ...admin };
+      // Update localStorage with the response data
+      const updatedAdminData = { ...adminData, ...response.data };
       localStorage.setItem("adminData", JSON.stringify(updatedAdminData));
     } catch (err) {
-      toast.error("❌ Failed to update profile");
+      console.error('Profile update error:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || "Failed to update profile";
+      toast.error(`❌ ${errorMessage}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -107,7 +128,7 @@ const AccountSettings = () => {
     try {
       // Fixed API endpoint
       await axios.put(
-        `http://localhost:5000/api/admin/${adminId}`,
+        `https://eme6.com/api/admin/${adminId}`,
         { password: newPass },
         { 
           headers: { 
@@ -132,9 +153,6 @@ const AccountSettings = () => {
   const handleCreateAdmin = async () => {
     const { name, email, password, confirmPassword } = newAdmin;
     
-    // Add console log for debugging
-    console.log('Create Admin button clicked', { name, email, password, confirmPassword });
-    
     if (!name || !email || !password || !confirmPassword) {
       toast.error("❗ Please fill all fields");
       return;
@@ -143,19 +161,26 @@ const AccountSettings = () => {
       toast.error("❌ Passwords do not match");
       return;
     }
-    if (password.length < 6) {
-      toast.error("❌ Password must be at least 6 characters long");
+    if (password.length < 8) {
+      toast.error("❌ Password must be at least 8 characters long");
+      return;
+    }
+    
+    // Check password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+    if (!passwordRegex.test(password)) {
+      toast.error("❌ Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (@$!%*?&)");
       return;
     }
 
     try {
-      console.log('Sending request to create admin...');
+      setLoading(true);
       
-      const response = await axios.post('http://localhost:5000/api/auth/register', {
+      const response = await axios.post('https://eme6.com/api/auth/register', {
         name,
         email,
         password,
-        role: 'admin'
+        role: newAdmin.role
       }, {
         headers: { 
           Authorization: `Bearer ${adminToken}`,
@@ -164,7 +189,6 @@ const AccountSettings = () => {
         timeout: 10000
       });
       
-      console.log('Admin created successfully:', response.data);
       toast.success("✅ Admin account created successfully");
       
       setNewAdmin({
@@ -178,7 +202,7 @@ const AccountSettings = () => {
       
       // Refresh admin list
       try {
-        const allAdminsRes = await axios.get('http://localhost:5000/api/admin', {
+        const allAdminsRes = await axios.get('https://eme6.com/api/admin', {
           headers: { Authorization: `Bearer ${adminToken}` },
         });
         setAllAdmins(allAdminsRes.data);
@@ -199,6 +223,8 @@ const AccountSettings = () => {
       } else {
         toast.error("❌ An unexpected error occurred");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -212,13 +238,13 @@ const AccountSettings = () => {
 
     try {
       // Fixed API endpoint
-      await axios.delete(`http://localhost:5000/api/admin/${adminIdToDelete}`, {
+      await axios.delete(`https://eme6.com/api/admin/${adminIdToDelete}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
       toast.success("✅ Admin account deleted successfully");
       
       // Refresh admin list
-      const allAdminsRes = await axios.get('http://localhost:5000/api/admin', {
+      const allAdminsRes = await axios.get('https://eme6.com/api/admin', {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
       setAllAdmins(allAdminsRes.data);
@@ -232,7 +258,7 @@ const AccountSettings = () => {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/admin/${adminId}`, {
+      await axios.delete(`https://eme6.com/api/admin/${adminId}`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
       toast.success("✅ Account deleted successfully");
@@ -253,21 +279,23 @@ const AccountSettings = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
         <span className="ml-3 text-gray-600">Loading...</span>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">      
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <ToastContainer position="top-right" autoClose={3000} />
+      
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Cog6ToothIcon className="h-6 w-6 text-purple-600" />
+          <div className="p-2 bg-black rounded-lg">
+            <Cog6ToothIcon className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-800">Account Settings</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
         </div>
         <p className="text-gray-600">Manage your admin account and system administrators.</p>
       </div>
@@ -275,17 +303,16 @@ const AccountSettings = () => {
       {/* Tabs */}
       <div className="flex space-x-1 mb-6">
         {[
-          { id: 'profile', label: 'Profile Settings', icon: UserIcon },
-          { id: 'password', label: 'Password & Security', icon: KeyIcon },
+          { id: 'profile', label: 'Account Settings', icon: UserIcon },
           // Only show Admin Management tab for super admin
-          ...(adminData?.role === 'super admin' ? [{ id: 'admins', label: 'Admin Management', icon: UsersIcon }] : []),
+          ...(admin.role === 'super admin' ? [{ id: 'superadmin', label: 'Admin Management', icon: UsersIcon }] : []),
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
               activeTab === tab.id
-                ? 'bg-purple-600 text-white'
+                ? 'bg-red-600 text-white'
                 : 'bg-white text-gray-600 hover:bg-gray-100'
             }`}
           >
@@ -295,53 +322,68 @@ const AccountSettings = () => {
         ))}
       </div>
 
-      {/* Profile Settings Tab */}
+      {/* Account Settings Tab - Combined Profile & Password */}
       {activeTab === 'profile' && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <UserIcon className="h-6 w-6 text-purple-600" />
-            <h2 className="text-xl font-semibold">Profile Information</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-              <Input
-                type="text"
-                value={admin.name}
-                onChange={(e) => setAdmin({ ...admin, name: e.target.value })}
-                placeholder="Enter your name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-              <Input
-                type="email"
-                value={admin.email}
-                onChange={(e) => setAdmin({ ...admin, email: e.target.value })}
-                placeholder="Enter your email"
-              />
-            </div>
-          </div>
-          
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={handleProfileUpdate}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition"
-            >
-              Save Changes
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Password & Security Tab */}
-      {activeTab === 'password' && (
         <div className="space-y-6">
-          {/* Change Password */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          {/* Profile Information Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="bg-white rounded-xl shadow-lg p-6"
+          >
             <div className="flex items-center gap-3 mb-6">
-              <KeyIcon className="h-6 w-6 text-purple-600" />
+              <UserIcon className="h-6 w-6 text-red-600" />
+              <h2 className="text-xl font-semibold">Profile Information</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <Input
+                  type="text"
+                  value={admin.name}
+                  onChange={(e) => setAdmin({ ...admin, name: e.target.value })}
+                  placeholder="Enter your name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <Input
+                  type="email"
+                  value={admin.email}
+                  onChange={(e) => setAdmin({ ...admin, email: e.target.value })}
+                  placeholder="Enter your email"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleProfileUpdate}
+                disabled={loading}
+                className={`px-6 py-2 rounded-lg font-medium transition ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-lg hover:shadow-xl"
+                } text-white`}
+              >
+                {loading ? "Saving..." : "Save Changes"}
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* Password & Security Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-white rounded-xl shadow-lg p-6"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <KeyIcon className="h-6 w-6 text-red-600" />
               <h2 className="text-xl font-semibold">Change Password</h2>
             </div>
             
@@ -414,16 +456,28 @@ const AccountSettings = () => {
               </div>
             </div>
             
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handlePasswordChange}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition mt-6"
+              disabled={loading}
+              className={`mt-6 px-6 py-2 rounded-lg font-medium transition ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 shadow-lg hover:shadow-xl"
+              } text-white`}
             >
-              Update Password
-            </button>
-          </div>
+              {loading ? "Updating..." : "Update Password"}
+            </motion.button>
+          </motion.div>
 
-          {/* Account Actions */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          {/* Account Actions Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="bg-white rounded-xl shadow-lg p-6"
+          >
             <div className="flex items-center gap-3 mb-6">
               <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
               <h2 className="text-xl font-semibold">Danger Zone</h2>
@@ -458,23 +512,24 @@ const AccountSettings = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
 
+
       {/* Admin Management Tab */}
-      {activeTab === 'admins' && (
+      {activeTab === 'superadmin' && (
         <div className="space-y-6">
           {/* Create New Admin */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <UsersIcon className="h-6 w-6 text-purple-600" />
+                <UsersIcon className="h-6 w-6 text-red-600" />
                 <h2 className="text-xl font-semibold">Admin Management</h2>
               </div>
               <button
                 onClick={() => setShowCreateAdmin(!showCreateAdmin)}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition"
               >
                 <PlusIcon className="h-4 w-4" />
                 Add New Admin
@@ -489,47 +544,42 @@ const AccountSettings = () => {
                     type="text"
                     placeholder="Admin Name"
                     value={newAdmin.name}
-                    onChange={(e) => {
-                      console.log('Name changed:', e.target.value);
-                      setNewAdmin({ ...newAdmin, name: e.target.value });
-                    }}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
                   />
                   <Input
                     type="email"
                     placeholder="Admin Email"
                     value={newAdmin.email}
-                    onChange={(e) => {
-                      console.log('Email changed:', e.target.value);
-                      setNewAdmin({ ...newAdmin, email: e.target.value });
-                    }}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
                   />
                   <Input
                     type="password"
-                    placeholder="Password"
+                    placeholder="Password (min 8 chars, uppercase, lowercase, number, special char)"
                     value={newAdmin.password}
-                    onChange={(e) => {
-                      console.log('Password changed');
-                      setNewAdmin({ ...newAdmin, password: e.target.value });
-                    }}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
                   />
                   <Input
                     type="password"
                     placeholder="Confirm Password"
                     value={newAdmin.confirmPassword}
-                    onChange={(e) => {
-                      console.log('Confirm password changed');
-                      setNewAdmin({ ...newAdmin, confirmPassword: e.target.value });
-                    }}
+                    onChange={(e) => setNewAdmin({ ...newAdmin, confirmPassword: e.target.value })}
                   />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                    <Select
+                      value={newAdmin.role}
+                      onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
+                      options={[
+                        { value: 'admin', label: 'Admin' },
+                        { value: 'super admin', label: 'Super Admin' }
+                      ]}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-3 mt-4">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      console.log('Create Admin button clicked - event triggered');
-                      handleCreateAdmin();
-                    }}
+                    onClick={handleCreateAdmin}
                     disabled={loading}
                     className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition"
                   >
@@ -538,7 +588,6 @@ const AccountSettings = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      console.log('Cancel button clicked');
                       setShowCreateAdmin(false);
                       setNewAdmin({
                         name: "",
@@ -558,7 +607,7 @@ const AccountSettings = () => {
           </div>
 
           {/* Admin List */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="p-6 border-b">
               <h3 className="text-lg font-semibold">All Administrators</h3>
             </div>
@@ -578,8 +627,8 @@ const AccountSettings = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                              <span className="text-sm font-medium text-purple-600">
+                            <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                              <span className="text-sm font-medium text-red-600">
                                 {adminUser.name?.charAt(0)?.toUpperCase()}
                               </span>
                             </div>

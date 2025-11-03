@@ -1,30 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   CubeIcon,
-  ClipboardIcon,
   UsersIcon,
   PlusCircleIcon,
   TagIcon,
-  TruckIcon,
-  CheckCircleIcon,
-  ClockIcon,
   XCircleIcon,
-  ChartBarIcon,
-  EyeIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
 const AdminDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
     totalProducts: 0,
     totalCustomers: 0,
-    totalOrders: 0,
-    totalCategories: 0,
-    recentOrders: [],
-    orderStatusDistribution: [],
-    topProducts: []
+    totalCategories: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,58 +29,45 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError('');
       const token = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/admin/dashboard/stats', {
-        headers: { Authorization: `Bearer ${token}` }
+      
+      if (!token) {
+        setError('Authentication required. Please login again.');
+        navigate('/admin/login');
+        return;
+      }
+      
+      const response = await axios.get('https://eme6.com/api/admin/dashboard/stats', {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
       });
       setDashboardData(response.data);
+      // ✅ Removed unnecessary success toast that was showing on every load
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data');
-      toast.error('Failed to load dashboard data');
+      
+      if (err.response?.status === 401) {
+        setError('Session expired. Please login again.');
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+      } else if (err.response?.status === 403) {
+        setError('Access denied. You do not have permission to view dashboard data.');
+      } else if (err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to load dashboard data');
+      }
+      
+      // ✅ Show error toast only once with toastId
+      toast.error(err.response?.data?.message || 'Failed to load dashboard data', {
+        toastId: 'dashboard-error', // Prevent duplicate error toasts
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      case 'processing': return 'text-blue-600 bg-blue-100';
-      case 'shipped': return 'text-purple-600 bg-purple-100';
-      case 'delivered': return 'text-green-600 bg-green-100';
-      case 'cancelled': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'pending': return <ClockIcon className="w-4 h-4" />;
-      case 'processing': return <ChartBarIcon className="w-4 h-4" />;
-      case 'shipped': return <TruckIcon className="w-4 h-4" />;
-      case 'delivered': return <CheckCircleIcon className="w-4 h-4" />;
-      case 'cancelled': return <XCircleIcon className="w-4 h-4" />;
-      default: return <ClockIcon className="w-4 h-4" />;
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
 
   if (loading) {
     return (
@@ -135,13 +114,6 @@ const AdminDashboard = () => {
       bgColor: 'bg-green-50'
     },
     { 
-      label: 'Total Orders', 
-      value: dashboardData.totalOrders, 
-      Icon: ClipboardIcon,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    },
-    { 
       label: 'Categories', 
       value: dashboardData.totalCategories, 
       Icon: TagIcon,
@@ -164,28 +136,45 @@ const AdminDashboard = () => {
       onClick: () => navigate('/admin/add-category'),
       color: 'text-green-600',
       bgColor: 'bg-green-50'
-    },
-    { 
-      label: 'View Orders', 
-      Icon: EyeIcon, 
-      onClick: () => navigate('/admin/orders'),
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
     }
   ];
 
   return (
     <div className="flex-1 h-full bg-gray-50 px-8 py-6 overflow-y-auto font-poppins">
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        className="mt-16"
+      />
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">
-          Welcome back! Here's what's happening with your store today.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+            <p className="text-gray-600 mt-2">
+              Welcome back! Here's what's happening with your store today.
+            </p>
+          </div>
+          <button
+            onClick={fetchDashboardData}
+            disabled={loading}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowPathIcon className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {infoCards.map(({ label, value, Icon, color, bgColor }) => (
           <div
             key={label}
@@ -205,7 +194,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Action Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
         {actionCards.map(({ label, Icon, onClick, color, bgColor }) => (
           <div
             key={label}
@@ -222,81 +211,6 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      {/* Recent Orders and Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Orders */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-            <ClipboardIcon className="w-6 h-6 mr-2 text-purple-600" />
-            Recent Orders
-          </h3>
-          <div className="space-y-4">
-            {dashboardData.recentOrders.length > 0 ? (
-              dashboardData.recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <span className="font-semibold text-gray-800">#{order.id}</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getStatusColor(order.status)}`}>
-                        {getStatusIcon(order.status)}
-                        <span className="capitalize">{order.status}</span>
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{order.customer_name}</p>
-                    <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-8">No recent orders found</p>
-            )}
-          </div>
-        </div>
-
-        {/* Order Status Distribution */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-            <ChartBarIcon className="w-6 h-6 mr-2 text-purple-600" />
-            Order Status Overview
-          </h3>
-          <div className="space-y-3">
-            {dashboardData.orderStatusDistribution.length > 0 ? (
-              dashboardData.orderStatusDistribution.map((status) => (
-                <div key={status.status} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg ${getStatusColor(status.status).split(' ')[1]}`}>
-                      {getStatusIcon(status.status)}
-                    </div>
-                    <span className="font-medium text-gray-700 capitalize">{status.status}</span>
-                  </div>
-                  <span className="font-bold text-gray-800">{status.count}</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-8">No order data available</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Top Products */}
-      {dashboardData.topProducts.length > 0 && (
-        <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-            <CubeIcon className="w-6 h-6 mr-2 text-purple-600" />
-            Top Selling Products
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dashboardData.topProducts.map((product, index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold text-gray-800 truncate">{product.name}</h4>
-                <p className="text-sm text-gray-600">{formatCurrency(product.price)}</p>
-                <p className="text-sm font-medium text-purple-600">Sold: {product.total_sold} units</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

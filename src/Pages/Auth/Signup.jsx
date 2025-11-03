@@ -65,13 +65,10 @@ const Signup = () => {
         role: "customer",
       };
 
-      const response = await axios.post("http://localhost:5000/api/auth/register", payload);
+      const response = await axios.post("https://eme6.com/api/auth/register", payload);
 
       if (response.status === 201) {
-        toast.success("Account created successfully! Please sign in.");
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
+        navigate("/login");
       }
     } catch (err) {
       console.error("Signup error:", err.response || err.message || err);

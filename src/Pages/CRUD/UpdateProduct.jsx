@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { toast} from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   PencilIcon,
@@ -10,7 +10,13 @@ import {
   CubeIcon,
   ArrowLeftIcon,
   TagIcon,
-  PhotoIcon
+  PhotoIcon,
+  PlusIcon,
+  CloudArrowUpIcon,
+  ExclamationTriangleIcon,
+  SparklesIcon,
+  CogIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 // Import reusable components
@@ -107,63 +113,274 @@ const getImageUrl = (imagePath) => {
   
   // If the path already contains '/uploads/', don't add it again
   if (imagePath.startsWith('/uploads/')) {
-    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://eme6.com';
     return `${API_BASE_URL}${imagePath}`;
   }
   
   // If the path already contains 'uploads/' (without leading slash), add base URL only
   if (imagePath.startsWith('uploads/')) {
-    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://eme6.com';
     return `${API_BASE_URL}/${imagePath}`;
   }
   
   // For relative paths, construct the full URL
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://eme6.com';
   return `${API_BASE_URL}/uploads/products/${imagePath}`;
 };
 
 const UpdateProduct = () => {
   const navigate = useNavigate();
-  const { productId } = useParams(); // FIXED: Changed from 'id' to 'productId'
+  const { productId } = useParams();
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [categories, setCategories] = useState([]);
-  const [formData, setFormData] = useState({
-    name: '',
-    categoryId: '',
-    sizes: '',
-    descriptions: '',
-    images: [], // New images to upload
-    existingImages: [], // Existing images from server
-    // Mechanical seal attributes
-    material: '',
-    temperature: '',
-    pressure: '',
-    speed: ''
+  const [images, setImages] = useState([]);
+  const [dragActive, setDragActive] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  
+  const [form, setForm] = useState({
+    productName: '',
+    categoryId: ''
   });
+  
+  // For regular products (non-mechanical seal)
+  const [regularProduct, setRegularProduct] = useState({
+    size: '',
+    description: ''
+  });
+
+  // For mechanical seal products - each product size will have its own mechanical seal attributes
+  const [mechanicalSealData, setMechanicalSealData] = useState({
+    sizeDescriptions: [{ size: '', description: '' }],
+    // This will store mechanical seal attributes for each product size
+    mechanicalSealAttributes: []
+  });
+
   const [errors, setErrors] = useState({});
   const [originalData, setOriginalData] = useState(null);
   const [mechanicalSealAttributes, setMechanicalSealAttributes] = useState(null);
-  const [isMechanicalSeal, setIsMechanicalSeal] = useState(false);
+  const [existingImages, setExistingImages] = useState([]);
 
-  // Fetch categories
+  // Fetch categories on component mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const adminToken = localStorage.getItem('adminToken');
-        const response = await axios.get('http://localhost:5000/api/categories', {
-          headers: { 'Authorization': `Bearer ${adminToken}` }
-        });
-        setCategories(response.data);
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-        toast.error('Failed to load categories');
-        // Set empty array to prevent infinite loading
-        setCategories([]);
-      }
-    };
     fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await axios.get('https://eme6.com/api/categories', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to fetch categories');
+    }
+  };
+
+  // Check if selected category is mechanical seal
+  const isMechanicalSeal = () => {
+    const selectedCategory = categories.find(cat => cat.id === parseInt(form.categoryId));
+    return selectedCategory?.special_category === true || selectedCategory?.name?.toLowerCase() === 'mechanical seals';
+  };
+
+  // Image handling functions
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const files = Array.from(e.dataTransfer.files);
+      const validFiles = files.filter(file => file.type.startsWith('image/'));
+      const newImages = [...images, ...validFiles].slice(0, 6);
+      setImages(newImages);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter(file => file.type.startsWith('image/'));
+    const newImages = [...images, ...validFiles].slice(0, 6);
+    setImages(newImages);
+  };
+
+  const handleImageRemove = (index) => {
+    const updated = [...images];
+    updated.splice(index, 1);
+    setImages(updated);
+  };
+
+  const handleFormChange = (field, value) => {
+    setForm({ ...form, [field]: value });
+    
+    // Reset form data when category changes
+    if (field === 'categoryId') {
+      setRegularProduct({ size: '', description: '' });
+      setMechanicalSealData({
+        sizeDescriptions: [{ size: '', description: '' }],
+        mechanicalSealAttributes: []
+      });
+    }
+  };
+
+  const handleRegularProductChange = (field, value) => {
+    setRegularProduct({ ...regularProduct, [field]: value });
+  };
+
+
+  const addSizeDescription = () => {
+    setMechanicalSealData({
+      ...mechanicalSealData,
+      sizeDescriptions: [...mechanicalSealData.sizeDescriptions, { size: '', description: '' }]
+    });
+  };
+
+  const removeSizeDescription = (index) => {
+    if (mechanicalSealData.sizeDescriptions.length > 1) {
+      const updated = [...mechanicalSealData.sizeDescriptions];
+      updated.splice(index, 1);
+      setMechanicalSealData({
+        ...mechanicalSealData,
+        sizeDescriptions: updated
+      });
+    }
+  };
+
+  const handleSizeDescriptionChange = (index, field, value) => {
+    const updated = [...mechanicalSealData.sizeDescriptions];
+    updated[index][field] = value;
+    setMechanicalSealData({
+      ...mechanicalSealData,
+      sizeDescriptions: updated
+    });
+  };
+
+  // Handle mechanical seal attributes for a specific product size
+  const handleMechanicalSealChange = (sizeIndex, field, value) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    // Ensure we have an object for this size index
+    if (!updatedAttributes[sizeIndex]) {
+      updatedAttributes[sizeIndex] = {
+        sizes: [],
+        descriptions: [],
+        material: '',
+        temperature: '',
+        pressure: '',
+        speed: ''
+      };
+    }
+    
+    updatedAttributes[sizeIndex][field] = value;
+    
+    setMechanicalSealData({
+      ...mechanicalSealData,
+      mechanicalSealAttributes: updatedAttributes
+    });
+  };
+
+  // Handle mechanical seal size/description pairs for a specific product size
+  const handleMechanicalSealSizeDescriptionChange = (sizeIndex, specIndex, field, value) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    // Ensure we have an object for this size index
+    if (!updatedAttributes[sizeIndex]) {
+      updatedAttributes[sizeIndex] = {
+        sizes: [],
+        descriptions: [],
+        material: '',
+        temperature: '',
+        pressure: '',
+        speed: ''
+      };
+    }
+    
+    const isSizeField = field === 'size';
+    const targetArray = isSizeField ? 'sizes' : 'descriptions';
+    const otherArray = isSizeField ? 'descriptions' : 'sizes';
+    
+    const updatedSpecs = [...updatedAttributes[sizeIndex][targetArray]];
+    const otherSpecs = [...updatedAttributes[sizeIndex][otherArray]];
+    
+    // Ensure both arrays have enough items to match the specIndex
+    while (updatedSpecs.length <= specIndex) {
+      updatedSpecs.push('');
+    }
+    while (otherSpecs.length <= specIndex) {
+      otherSpecs.push('');
+    }
+    
+    // Update the target array
+    updatedSpecs[specIndex] = value;
+    updatedAttributes[sizeIndex][targetArray] = updatedSpecs;
+    
+    // Ensure the other array has the same length
+    updatedAttributes[sizeIndex][otherArray] = otherSpecs;
+    
+    setMechanicalSealData({
+      ...mechanicalSealData,
+      mechanicalSealAttributes: updatedAttributes
+    });
+  };
+
+  const addMechanicalSealSizeDescription = (sizeIndex) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    // Ensure we have an object for this size index
+    if (!updatedAttributes[sizeIndex]) {
+      updatedAttributes[sizeIndex] = {
+        sizes: [],
+        descriptions: [],
+        material: '',
+        temperature: '',
+        pressure: '',
+        speed: ''
+      };
+    }
+    
+    // If sizes array is empty, initialize with one empty item
+    if (updatedAttributes[sizeIndex].sizes.length === 0) {
+      updatedAttributes[sizeIndex].sizes = [''];
+      updatedAttributes[sizeIndex].descriptions = [''];
+    } else {
+      // Add a new empty item
+      updatedAttributes[sizeIndex].sizes.push('');
+      updatedAttributes[sizeIndex].descriptions.push('');
+    }
+    
+    setMechanicalSealData({
+      ...mechanicalSealData,
+      mechanicalSealAttributes: updatedAttributes
+    });
+  };
+
+  const removeMechanicalSealSizeDescription = (sizeIndex, specIndex) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    if (updatedAttributes[sizeIndex] && updatedAttributes[sizeIndex].sizes.length > 1) {
+      updatedAttributes[sizeIndex].sizes.splice(specIndex, 1);
+      updatedAttributes[sizeIndex].descriptions.splice(specIndex, 1);
+      
+      setMechanicalSealData({
+        ...mechanicalSealData,
+        mechanicalSealAttributes: updatedAttributes
+      });
+    }
+  };
 
   // Enhanced fetch product data with proper error handling
   useEffect(() => {
@@ -179,32 +396,18 @@ const UpdateProduct = () => {
         }
   
         const response = await axios.get(
-          `http://localhost:5000/api/products/${productId}`,
+          `https://eme6.com/api/products/${productId}`,
           {
             headers: {
               'Authorization': `Bearer ${adminToken}`
             },
-            timeout: 15000 // Increased timeout for reliability
+            timeout: 15000
           }
         );
   
         const productData = response.data;
         console.log('📋 Fetched product data:', productData);
         
-        // Helper function to handle image URLs
-        const getImageUrl = (imagePath) => {
-          if (!imagePath) return '';
-          
-          // If it's already a full URL, return as is
-          if (imagePath.startsWith('http')) {
-            return imagePath;
-          }
-          
-          // Construct the full URL
-          const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-          return `${API_BASE_URL}/uploads/products/${imagePath}`;
-        };
-
         // Helper function to safely handle product images
         const getProductImages = (product) => {
           if (!product.pic) return [];
@@ -222,49 +425,82 @@ const UpdateProduct = () => {
               .map((v) => v.trim());  // Trim whitespace from each element
           }
           
-          // Return the raw image paths - getImageUrl will handle URL construction
           return imageArray.filter(Boolean); // Remove any empty/null values
         };
   
         const existingImages = getProductImages(productData);
         
-        setFormData({
-  name: productData.name || '',
-  categoryId: productData.category_id || '',
-  sizes: getProductSizes(productData.sizes), // Use helper function to handle arrays/strings
-  descriptions: getProductDescriptions(productData.descriptions),
-  images: [],
-  existingImages: existingImages,
-  material: '',
-  temperature: '',
-  pressure: '',
-  speed: ''
-});
+        // Set form data based on product type
+        setForm({
+          productName: productData.name || '',
+          categoryId: productData.category_id || ''
+        });
         
+        // Handle sizes and descriptions based on product type
+        const selectedCategory = categories.find(cat => cat.id === parseInt(productData.category_id));
+        const isMechSeal = selectedCategory?.name?.toLowerCase() === 'mechanical seals';
+        
+        if (isMechSeal) {
+          // For mechanical seals, populate size descriptions
+          const sizesArray = Array.isArray(productData.sizes) ? productData.sizes : [productData.sizes];
+          const descriptionsArray = Array.isArray(productData.descriptions) ? productData.descriptions : [productData.descriptions];
+          
+          const sizeDescriptions = sizesArray.map((size, index) => ({
+            size: size || '',
+            description: descriptionsArray[index] || ''
+          }));
+          
+          // Initialize mechanical seal attributes for each size
+          const mechanicalSealAttributes = [];
+          for (let i = 0; i < sizeDescriptions.length; i++) {
+            mechanicalSealAttributes[i] = {
+              sizes: [''],
+              descriptions: [''],
+              material: '',
+              temperature: '',
+              pressure: '',
+              speed: ''
+            };
+          }
+          
+          setMechanicalSealData({
+            sizeDescriptions: sizeDescriptions.length > 0 ? sizeDescriptions : [{ size: '', description: '' }],
+            mechanicalSealAttributes: mechanicalSealAttributes
+          });
+          
+          // Store the original data for later use in mechanical seal attributes loading
+          setOriginalData({ ...productData, mechanicalSealAttributes: null });
+        } else {
+          // For regular products
+          const sizesString = Array.isArray(productData.sizes) ? productData.sizes.join(', ') : productData.sizes || '';
+          const descriptionsString = Array.isArray(productData.descriptions) ? productData.descriptions.join(', ') : productData.descriptions || '';
+          
+          setRegularProduct({
+            size: sizesString,
+            description: descriptionsString
+          });
+        }
+        
+        setExistingImages(existingImages);
         setOriginalData(productData);
         
       } catch (error) {
         console.error('❌ Failed to fetch product:', error);
         
-        // Enhanced error handling - don't redirect on network errors
         if (error.response?.status === 404) {
           toast.error('Product not found');
-          navigate('/admin'); // Only redirect for 404
+          navigate('/admin');
         } else if (error.response?.status === 401) {
           toast.error('Authentication required. Please login again.');
           localStorage.removeItem('adminToken');
           navigate('/admin/login');
         } else if (error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK' || !error.response) {
-          // Network errors - don't redirect, show error message
           toast.error('Network error. Please check your connection and try again.');
-          console.log(toast.error);
           setErrors({ network: 'Failed to load product data due to network issues' });
         } else if (error.response?.status >= 500) {
-          // Server errors - don't redirect
           toast.error('Server error. Please try again later.');
           setErrors({ server: 'Server error occurred while loading product data' });
         } else {
-          // Other errors - show generic message but don't redirect
           toast.error('Failed to load product data. Please try again.');
           setErrors({ general: 'Failed to load product data' });
         }
@@ -273,29 +509,24 @@ const UpdateProduct = () => {
       }
     };
   
-    if (productId) {
+    if (productId && categories.length > 0) {
       fetchProduct();
-    } else {
+    } else if (productId) {
       setFetchLoading(false);
     }                
-  }, [productId, navigate]);
+  }, [productId, navigate, categories]);
 
   // Separate useEffect for mechanical seal logic
   useEffect(() => {
     const fetchMechanicalSealData = async () => {
-      if (!formData.categoryId || categories.length === 0) return;
+      if (!form.categoryId || categories.length === 0 || !isMechanicalSeal() || !productId) return;
       
-      // Determine if this is a mechanical seal product
-      const selectedCategory = categories.find(cat => cat.id === parseInt(formData.categoryId));
-      const isMechSeal = selectedCategory?.name?.toLowerCase().includes('mechanical seal') || false;
-      setIsMechanicalSeal(isMechSeal);
-      
-      // Fetch mechanical seal attributes if needed
-      if (isMechSeal && productId) { // FIXED: Changed from 'id' to 'productId'
+      // Only fetch if we have mechanical seal data structure set up
+      if (mechanicalSealData.sizeDescriptions.length > 0) {
         try {
           const adminToken = localStorage.getItem('adminToken');
           const mechResponse = await axios.get(
-            `http://localhost:5000/api/mechanical-seal-attributes/${productId}`, // FIXED: Changed from 'id' to 'productId'
+            `https://eme6.com/api/mechanical-seal-attributes/${productId}`,
             {
               headers: {
                 'Authorization': `Bearer ${adminToken}`
@@ -304,417 +535,221 @@ const UpdateProduct = () => {
           );
           
           const mechData = mechResponse.data;
+          console.log('🔧 Fetched mechanical seal data:', mechData);
           setMechanicalSealAttributes(mechData);
-          setFormData(prev => ({
-            ...prev,
-            material: mechData.material || '',
-            temperature: mechData.temperature || '',
-            pressure: mechData.pressure || '',
-            speed: mechData.speed || ''
-          }));
+          
+          // Update mechanical seal attributes for each product size
+          if (mechData && Object.keys(mechData).length > 0) {
+            const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+            
+            // mechData is an object with keys as product_size strings (e.g., "25mm", "50mm")
+            Object.keys(mechData).forEach(productSizeString => {
+              const attrData = mechData[productSizeString];
+              
+              // Find the index of this size in the sizeDescriptions array
+              const sizeIndex = mechanicalSealData.sizeDescriptions.findIndex(
+                sizeDesc => sizeDesc.size === productSizeString
+              );
+              
+              if (sizeIndex >= 0 && sizeIndex < updatedAttributes.length) {
+                updatedAttributes[sizeIndex] = {
+                  sizes: attrData.sizes || [''],
+                  descriptions: attrData.descriptions || [''],
+                  material: attrData.material || '',
+                  temperature: attrData.temperature || '',
+                  pressure: attrData.pressure || '',
+                  speed: attrData.speed || ''
+                };
+              }
+            });
+            
+            console.log('🔧 Setting mechanical seal attributes:', updatedAttributes);
+            setMechanicalSealData(prev => ({
+              ...prev,
+              mechanicalSealAttributes: updatedAttributes
+            }));
+          }
         } catch (mechError) {
-          console.log('No mechanical seal attributes found for this product');
+          console.log('No mechanical seal attributes found for this product:', mechError);
         }
       }
     };
 
     fetchMechanicalSealData();
-  }, [formData.categoryId, categories, productId]); // FIXED: Changed from 'id' to 'productId'
-
-  // Update isMechanicalSeal when category changes
-  useEffect(() => {
-    if (formData.categoryId && categories.length > 0) {
-      const selectedCategory = categories.find(cat => cat.id === parseInt(formData.categoryId));
-      const isMechSeal = selectedCategory?.name?.toLowerCase().includes('mechanical seal') || false;
-      setIsMechanicalSeal(isMechSeal);
-    }
-  }, [formData.categoryId, categories]);
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  // Handle new image upload changes
-  const handleImageChange = (files) => {
-    // Handle both event object and direct files array
-    let fileList;
-    if (files && files.target) {
-      // Called from a file input event
-      fileList = Array.from(files.target.files || []);
-    } else if (Array.isArray(files)) {
-      // Called from ImageUpload component
-      fileList = files;
-    } else {
-      console.error('Invalid files parameter:', files);
-      return;
-    }
-    
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    
-    // Validate each file
-    for (const file of fileList) {
-      if (!allowedTypes.includes(file.type)) {
-        toast.error(`${file.name} is not a supported image format. Please use JPEG, PNG, or WebP.`);
-        return;
-      }
-      if (file.size > maxSize) {
-        toast.error(`${file.name} is too large. Please use images under 5MB.`);
-        return;
-      }
-    }
-    
-    const totalImages = formData.existingImages.length + fileList.length;
-    if (totalImages > 2) {
-      toast.error('Maximum 2 images allowed. Please remove some existing images first.');
-      return;
-    }
-    
-    setFormData(prev => ({
-      ...prev,
-      images: fileList
-    }));
-    
-    // Clear any previous image errors
-    if (errors.images) {
-      setErrors(prev => ({ ...prev, images: '' }));
-    }
-  };
+  }, [form.categoryId, categories, productId, mechanicalSealData.sizeDescriptions.length]);
 
   // Handle removing existing images
   const handleRemoveExistingImage = (indexToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      existingImages: prev.existingImages.filter((_, index) => index !== indexToRemove)
-    }));
+    setExistingImages(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // Form validation
   const validateForm = () => {
-    const newErrors = {};
-    
-    // Enhanced name validation
-    if (!formData.name.trim()) {
-        newErrors.name = 'Product name is required';
-    } else if (formData.name.trim().length > 100) {
-        newErrors.name = 'Product name must be less than 100 characters';
-    } else if (!/^[a-zA-Z0-9\s\-_.,()]+$/.test(formData.name.trim())) {
-        newErrors.name = 'Product name contains invalid characters';
+    if (!form.productName.trim()) {
+      toast.error('Product name is required');
+      return false;
     }
-    
-    if (!formData.categoryId) {
-        newErrors.categoryId = 'Category is required';
+    if (!form.categoryId) {
+      toast.error('Please select a category');
+      return false;
     }
-    
-    // Enhanced description validation
-    if (!formData.descriptions || !formData.descriptions.trim()) {
-        newErrors.descriptions = 'Product description is required';
-    } else if (formData.descriptions.trim().length > 1000) {
-        newErrors.descriptions = 'Description must be less than 1000 characters';
+    if (existingImages.length === 0 && images.length === 0) {
+      toast.error('Please upload at least one image');
+      return false;
     }
-    
-    // Enhanced image validation (KEEP ONLY THIS ONE)
-    const totalImages = formData.existingImages.length + formData.images.length;
-    if (totalImages === 0) {
-        newErrors.images = 'At least one product image is required';
-    } else if (totalImages > 2) {
-        newErrors.images = 'Maximum 2 images allowed';
-    }
-    
-    // Validate mechanical seal attributes if applicable
-    if (isMechanicalSeal) {
-        if (!formData.material.trim()) {
-            newErrors.material = 'Material is required for mechanical seal products';
-        }
-        if (!formData.temperature.trim()) {
-            newErrors.temperature = 'Temperature is required for mechanical seal products';
-        }
-        if (!formData.pressure.trim()) {
-            newErrors.pressure = 'Pressure is required for mechanical seal products';
-        }
-        if (!formData.speed.trim()) {
-            newErrors.speed = 'Speed is required for mechanical seal products';
-        }
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-};
 
-  // Handle form submission
-  // Add DevTools detection function at the top of the component
-  const detectDevToolsNetworkPanel = () => {
-    const isDevToolsOpen = window.outerHeight - window.innerHeight > 160 || 
-                        window.outerWidth - window.innerWidth > 160;
-    const isReload = performance.navigation?.type === 1 || 
-                  performance.getEntriesByType('navigation')[0]?.type === 'reload';
-    return isDevToolsOpen && isReload;
+    if (isMechanicalSeal()) {
+      const hasValidSizeDescription = mechanicalSealData.sizeDescriptions.some(
+        item => item.size.trim() && item.description.trim()
+      );
+      if (!hasValidSizeDescription) {
+        toast.error('Please provide at least one size and description pair');
+        return false;
+      }
+      
+      // Validate mechanical seal attributes for each product size
+      for (let i = 0; i < mechanicalSealData.sizeDescriptions.length; i++) {
+        const sizeDesc = mechanicalSealData.sizeDescriptions[i];
+        if (sizeDesc.size.trim() && sizeDesc.description.trim()) {
+          const attr = mechanicalSealData.mechanicalSealAttributes[i];
+          if (!attr || !attr.material?.trim() || !attr.temperature?.trim() || 
+              !attr.pressure?.trim() || !attr.speed?.trim()) {
+            toast.error(`All mechanical seal attributes are required for size: ${sizeDesc.size}`);
+            return false;
+          }
+          
+          // Validate that mechanical seal sizes and descriptions have the same length
+          if (!attr.sizes || !attr.descriptions || attr.sizes.length !== attr.descriptions.length) {
+            toast.error(`Mechanical seal sizes and descriptions must have the same length for product size: ${sizeDesc.size}. Sizes: ${attr.sizes?.length || 0}, Descriptions: ${attr.descriptions?.length || 0}`);
+            return false;
+          }
+          
+          // Validate that all mechanical seal size/description pairs are filled
+          const hasValidMechanicalSpec = attr.sizes.some((size, index) => 
+            size.trim() && attr.descriptions[index]?.trim()
+          );
+          
+          if (!hasValidMechanicalSpec) {
+            toast.error(`At least one mechanical seal size/description pair is required for product size: ${sizeDesc.size}`);
+            return false;
+          }
+        }
+      }
+    } else {
+      if (!regularProduct.size.trim() || !regularProduct.description.trim()) {
+        toast.error('Size and description are required');
+        return false;
+      }
+    }
+
+    return true;
   };
-  
-  // Enhanced handleSubmit function
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
-      toast.error('Please fix the errors before submitting');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
-      const adminToken = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('adminToken');
       
-      if (!adminToken) {
+      if (!token) {
         toast.error('Authentication required. Please login again.');
         navigate('/admin/login');
         return;
       }
-      
-      // Additional validation before submission
-      if (!productId) {
-        toast.error('Product ID is missing. Cannot update product.');
-        return;
-      }
-      
-      // Validate category exists
-      if (!categories.find(cat => cat.id === parseInt(formData.categoryId))) {
-        toast.error('Selected category is invalid.');
-        return;
-      }
-      
-      // DevTools-aware configuration
-      const isDevToolsNetworkActive = detectDevToolsNetworkPanel();
-      const requestTimeout = isDevToolsNetworkActive ? 20000 : 10000;
-      
-      // Add delay if DevTools network panel is active
-      if (isDevToolsNetworkActive) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      
-      // Create FormData for file upload
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name.trim());
-      formDataToSend.append('categoryId', formData.categoryId);
 
-      // Convert sizes and descriptions to arrays before sending
-      const sizesArray = convertSizesToArray(formData.sizes);
-      const descriptionsArray = convertDescriptionsToArray(formData.descriptions);
+      const formData = new FormData();
+      formData.append('name', form.productName.trim());
+      formData.append('categoryId', form.categoryId);
 
-      formDataToSend.append('sizes', JSON.stringify(sizesArray));
-      formDataToSend.append('descriptions', JSON.stringify(descriptionsArray));
-      
-      // Send existing images that should be kept
-      formDataToSend.append('existingImages', JSON.stringify(formData.existingImages));
-      
-      // Append new image files
-      formData.images.forEach((file, index) => {
-        formDataToSend.append('productImages', file);
-      });
-      
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      
-      // Enhanced axios configuration for DevTools compatibility
-      const axiosConfig = {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'multipart/form-data'
-        },
-        timeout: requestTimeout,
-        validateStatus: (status) => status < 500, // Accept 4xx errors
-        maxRedirects: 0 // Prevent redirects when DevTools is open
-      };
-      
-      // Add DevTools-specific headers
-      if (isDevToolsNetworkActive) {
-        axiosConfig.headers['Cache-Control'] = 'no-cache';
-        axiosConfig.headers['Pragma'] = 'no-cache';
-      }
-      
-      let response;
-      let updateSuccess = false;
-      
-      try {
-        // Primary request attempt
-        response = await axios.put(
-          `${API_BASE_URL}/api/products/${productId}`,
-          formDataToSend,
-          axiosConfig
-        );
-        updateSuccess = true;
-      } catch (primaryError) {
-        console.warn('Primary update request failed:', primaryError.message);
+      if (isMechanicalSeal()) {
+        const sizes = mechanicalSealData.sizeDescriptions
+          .filter(item => item.size.trim())
+          .map(item => item.size.trim());
+        const descriptions = mechanicalSealData.sizeDescriptions
+          .filter(item => item.description.trim())
+          .map(item => item.description.trim());
         
-        // If blocked by DevTools, try alternative approach
-        if (isDevToolsNetworkActive && 
-            (primaryError.code === 'ERR_NETWORK' || 
-             primaryError.message?.includes('blocked') ||
-             primaryError.code === 'ECONNABORTED')) {
-          
-          console.log('Attempting alternative update method due to DevTools blocking...');
-          
-          try {
-            // Convert FormData to JSON for fetch API
-            const jsonData = {
-  name: formData.name.trim(),
-  categoryId: formData.categoryId,
-  sizes: convertSizesToArray(formData.sizes),
-  descriptions: convertDescriptionsToArray(formData.descriptions),
-  existingImages: formData.existingImages
-};
+        formData.append('sizes', JSON.stringify(sizes));
+        formData.append('descriptions', JSON.stringify(descriptions));
+        
+        // Prepare mechanical seal attributes for each product size
+        const mechanicalSealAttributes = [];
+        for (let i = 0; i < sizes.length; i++) {
+          const attr = mechanicalSealData.mechanicalSealAttributes[i];
+          if (attr) {
+            // Filter out empty mechanical seal size/description pairs
+            const filteredSizes = attr.sizes.filter(size => size.trim());
+            const filteredDescriptions = attr.descriptions.filter(desc => desc.trim());
             
-            // Handle file uploads separately if needed
-            if (formData.images.length > 0) {
-              // For now, show a message about image upload limitation
-              toast.warning('Image upload may be limited when DevTools is open. Please close DevTools and try again for image updates.');
-            }
-            
-            // Alternative fetch request
-            const fetchResponse = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
-              method: 'PUT',
-              headers: {
-                'Authorization': `Bearer ${adminToken}`,
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-              },
-              body: JSON.stringify(jsonData),
-              cache: 'no-cache'
+            mechanicalSealAttributes.push({
+              sizes: filteredSizes,
+              descriptions: filteredDescriptions,
+              material: attr.material,
+              temperature: attr.temperature,
+              pressure: attr.pressure,
+              speed: attr.speed
             });
-            
-            if (fetchResponse.ok) {
-              response = { data: await fetchResponse.json() };
-              updateSuccess = true;
-              console.log('✅ Alternative update method succeeded');
-            } else {
-              throw new Error(`HTTP ${fetchResponse.status}: ${fetchResponse.statusText}`);
-            }
-          } catch (alternativeError) {
-            console.error('Alternative update method also failed:', alternativeError);
-            throw primaryError; // Throw original error
           }
-        } else {
-          throw primaryError;
         }
+        
+        formData.append('mechanicalSealAttributes', JSON.stringify(mechanicalSealAttributes));
+      } else {
+        formData.append('sizes', JSON.stringify([regularProduct.size.trim()]));
+        formData.append('descriptions', JSON.stringify([regularProduct.description.trim()]));
       }
+
+      // Send existing images that should be kept
+      formData.append('existingImages', JSON.stringify(existingImages));
+
+      // Append new image files
+      images.forEach((file) => {
+        formData.append('productImages', file);
+      });
+
+      const productResponse = await axios.put(
+        `https://eme6.com/api/products/${productId}`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+
+      toast.success('Product updated successfully!');
       
-      if (updateSuccess) {
-        // Update mechanical seal attributes if applicable
-        if (isMechanicalSeal) {
-          const mechData = {
-            productId: productId,
-            material: formData.material.trim(),
-            temperature: formData.temperature.trim(),
-            pressure: formData.pressure.trim(),
-            speed: formData.speed.trim()
-          };
-          
-          try {
-            await axios.post(
-              `${API_BASE_URL}/api/mechanical-seal-attributes`,
-              mechData,
-              {
-                headers: {
-                  'Authorization': `Bearer ${adminToken}`,
-                  'Content-Type': 'application/json'
-                },
-                timeout: requestTimeout
-              }
-            );
-          } catch (mechError) {
-            console.error('Failed to update mechanical seal attributes:', mechError);
-            // Don't fail the entire update for this
-            toast.warning('Product updated but mechanical seal attributes may not have been saved.');
-          }
-        }
-        
-        toast.success('Product updated successfully!');
-        
-        // Navigate back to products list after a short delay
-        setTimeout(() => {
-          navigate('/admin');
-        }, 2000);
-      }
+      setTimeout(() => {
+        navigate('/admin');
+      }, 2000);
       
     } catch (error) {
-      console.error('❌ Failed to update product:', error);
-      
-      // Enhanced network error handling with DevTools awareness
-      if (error.code === 'NETWORK_ERROR' || error.code === 'ERR_NETWORK') {
-        if (detectDevToolsNetworkPanel()) {
-          toast.error('Request blocked by DevTools. Please close the Network panel in DevTools and try again.');
-        } else {
-          toast.error('Cannot connect to server. Please ensure the backend is running on http://localhost:5000');
-        }
-      } else if (error.code === 'ECONNREFUSED') {
-        toast.error('Connection refused. Backend server may not be running.');
-      } else if (error.code === 'ERR_CONNECTION_REFUSED') {
-        toast.error('Backend server is not responding. Please start the server.');
-      } else if (error.code === 'ECONNABORTED') {
-        if (detectDevToolsNetworkPanel()) {
-          toast.error('Request timed out. This may be due to DevTools network throttling. Please close DevTools and try again.');
-        } else {
-          toast.error('Request timed out. Please check your connection and try again.');
-        }
-      } else if (!error.response) {
-        if (detectDevToolsNetworkPanel()) {
-          toast.error('Network request blocked. Please close DevTools Network panel or disable network throttling and try again.');
-        } else {
-          toast.error('Network error. Please check if the backend server is running and try again.');
-        }
-      } else if (error.response?.status === 400) {
-        const errorMessage = error.response.data.message || 'Validation error';
-        if (errorMessage.includes('image')) {
-          toast.error('Image upload failed. Please check file size and format.');
-        } else {
-          toast.error(errorMessage);
-        }
-      } else if (error.response?.status === 413) {
-        toast.error('File too large. Please reduce image size to under 5MB.');
-      } else if (error.response?.status === 404) {
-        toast.error('Product not found. It may have been deleted.');
-      } else if (error.response?.status === 401) {
-        toast.error('Session expired. Please login again.');
-        localStorage.removeItem('adminToken');
-        navigate('/admin/login');
-      } else if (error.response?.status === 403) {
-        toast.error('You do not have permission to update this product.');
-      } else if (error.response?.status >= 500) {
-        toast.error('Server error. Please try again later.');
-      } else if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error('Failed to update product. Please check your data and try again.');
-      }
+      console.error('Error updating product:', error);
+      toast.error(error.response?.data?.message || 'Failed to update product');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle cancel/back navigation
-  const handleCancel = () => {
-    navigate('/admin');
+  const steps = [
+    { id: 1, name: 'Basic Info', icon: TagIcon },
+    { id: 2, name: 'Images', icon: PhotoIcon },
+    { id: 3, name: 'Specifications', icon: CogIcon },
+  ];
+
+  const getStepStatus = (stepId) => {
+    if (stepId < currentStep) return 'completed';
+    if (stepId === currentStep) return 'current';
+    return 'upcoming';
   };
 
   // Show loading spinner while fetching data
-  // Add retry function
-  const retryFetchProduct = () => {
-    setErrors({});
-    setFetchLoading(true);
-    // Trigger useEffect by updating a dependency
-    window.location.reload();
-  };
-
-  // In the render section, add error display:
   if (fetchLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -731,7 +766,7 @@ const UpdateProduct = () => {
           {errors.network || errors.server || errors.general}
         </div>
         <button 
-          onClick={retryFetchProduct}
+          onClick={() => window.location.reload()}
           className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
         >
           Retry Loading
@@ -741,340 +776,652 @@ const UpdateProduct = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">      
-      {/* Header Section */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        className="mt-16"
+      />
+      
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
               <button
-                onClick={handleCancel}
-                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                title="Back to Products"
+                onClick={() => navigate('/admin')}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
               >
-                <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
+                <ArrowLeftIcon className="h-4 w-4 mr-2" />
+                Back to Products
               </button>
-              <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                <PencilIcon className="h-8 w-8 text-purple-600" />
-                Update Product
-              </h1>
+              <div className="h-6 border-l border-gray-300"></div>
+              <div className="flex items-center space-x-2">
+                <SparklesIcon className="h-6 w-6 text-indigo-600" />
+                <h1 className="text-xl font-semibold text-gray-900">Update Product</h1>
+                {originalData && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (ID: {originalData.id})
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="text-gray-600 ml-10">
-              Modify product information and settings
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleCancel}
-              className="bg-gray-500 hover:bg-gray-600 px-6 py-2"
-            >
-              Cancel
-            </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Form */}
-      <div className="bg-white rounded-xl shadow-sm border max-w-4xl mx-auto">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <CubeIcon className="h-5 w-5 text-purple-600" />
-            <h2 className="text-xl font-semibold text-gray-800">Product Information</h2>
-            {originalData && (
-              <span className="text-sm text-gray-500 ml-2">
-                (ID: {originalData.id})
-              </span>
-            )}
-          </div>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="p-6 space-y-8">
-          {/* Basic Information Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-              📝 Basic Information
-            </h3>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Product Name *
-                </label>
-                <Input
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="Enter product name"
-                  className={errors.name ? 'border-red-500 focus:ring-red-500' : ''}
-                />
-                {errors.name && (
-                  <p className="text-red-500 text-sm flex items-center gap-1">
-                    <XMarkIcon className="h-4 w-4" />
-                    {errors.name}
-                  </p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Category *
-                </label>
-                <select
-                  name="categoryId"
-                  value={formData.categoryId}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.categoryId ? 'border-red-500 focus:ring-red-500' : ''
-                  }`}
-                >
-                  <option value="">Select a category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.categoryId && (
-                  <p className="text-red-500 text-sm flex items-center gap-1">
-                    <XMarkIcon className="h-4 w-4" />
-                    {errors.categoryId}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Sizes
-                </label>
-                <Input
-                  name="sizes"
-                  value={formData.sizes}
-                  onChange={handleInputChange}
-                  placeholder="Enter available sizes (e.g., Small, Medium, Large)"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Description *
-                </label>
-                <textarea
-                  name="descriptions"
-                  value={formData.descriptions}
-                  onChange={handleInputChange}
-                  placeholder="Enter product description"
-                  rows={3}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    errors.descriptions ? 'border-red-500 focus:ring-red-500' : ''
-                  }`}
-                />
-                {errors.descriptions && (
-                  <p className="text-red-500 text-sm flex items-center gap-1">
-                    <XMarkIcon className="h-4 w-4" />
-                    {errors.descriptions}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Existing Images Section */}
-          {formData.existingImages.length > 0 && (
-            <div className="existing-images">
-              <h4>Current Images:</h4>
-              <div className="image-preview-container">
-                {formData.existingImages.map((image, index) => (
-                  <div key={index} className="image-preview">
-                    <img 
-                      src={getImageUrl(image)} 
-                      alt={`Product ${index + 1}`}
-                      onError={(e) => {
-                        console.error('Failed to load image:', image);
-                        e.target.style.display = 'none';
-                        // Optionally show a placeholder
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                      onLoad={() => {
-                        console.log('✅ Image loaded successfully:', image);
-                      }}
-                    />
-                    <div 
-                      style={{ display: 'none', padding: '20px', background: '#f0f0f0', textAlign: 'center' }}
+      {/* Progress Steps */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <nav aria-label="Progress">
+          <ol className="flex items-center justify-center space-x-8">
+            {steps.map((step, stepIdx) => {
+              const status = getStepStatus(step.id);
+              return (
+                <li key={step.id} className="flex items-center">
+                  <div className="flex flex-col items-center group">
+                    <div
+                      className={`
+                        flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200
+                        ${
+                          status === 'completed'
+                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                            : status === 'current'
+                            ? 'border-indigo-600 text-indigo-600 bg-white'
+                            : 'border-gray-300 text-gray-500 bg-white'
+                        }
+                      `}
                     >
-                      Image not available
+                      {status === 'completed' ? (
+                        <CheckCircleIcon className="h-5 w-5" />
+                      ) : (
+                        <step.icon className="h-5 w-5" />
+                      )}
                     </div>
+                    <span
+                      className={`
+                        mt-2 text-sm font-medium transition-colors
+                        ${
+                          status === 'current'
+                            ? 'text-indigo-600'
+                            : status === 'completed'
+                            ? 'text-gray-900'
+                            : 'text-gray-500'
+                        }
+                      `}
+                    >
+                      {step.name}
+                    </span>
+                  </div>
+                  {stepIdx < steps.length - 1 && (
+                    <div
+                      className={`
+                        w-16 h-0.5 ml-4 transition-colors
+                        ${
+                          step.id < currentStep ? 'bg-indigo-600' : 'bg-gray-300'
+                        }
+                      `}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Step 1: Basic Information */}
+          {currentStep === 1 && (
+            <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+                <h2 className="text-lg font-semibold text-white flex items-center">
+                  <TagIcon className="h-5 w-5 mr-2" />
+                  Basic Information
+                </h2>
+                <p className="text-indigo-100 text-sm mt-1">Enter the fundamental details of your product</p>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {/* Product Name */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter a descriptive product name"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-gray-900 placeholder-gray-500"
+                    value={form.productName}
+                    onChange={(e) => handleFormChange('productName', e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Category Selection */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Product Category *
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-gray-900"
+                    value={form.categoryId}
+                    onChange={(e) => handleFormChange('categoryId', e.target.value)}
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  {form.categoryId && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>Selected:</strong> {categories.find(cat => cat.id === parseInt(form.categoryId))?.name}
+                        {isMechanicalSeal() && (
+                          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Special Category
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    disabled={!form.productName.trim() || !form.categoryId}
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Continue to Images
+                    <ArrowLeftIcon className="ml-2 h-4 w-4 rotate-180" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Image Upload */}
+          {currentStep === 2 && (
+            <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-green-500 to-teal-600 px-6 py-4">
+                <h2 className="text-lg font-semibold text-white flex items-center">
+                  <PhotoIcon className="h-5 w-5 mr-2" />
+                  Product Images
+                </h2>
+                <p className="text-green-100 text-sm mt-1">Upload high-quality images of your product (max 6)</p>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {/* Existing Images */}
+                {existingImages.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
+                      Current Images ({existingImages.length})
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                      {existingImages.map((img, idx) => (
+                        <div
+                          key={idx}
+                          className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <img
+                            src={getImageUrl(img)}
+                            alt={`Current ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExistingImage(idx)}
+                              className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-all duration-200 transform scale-90 group-hover:scale-100"
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Image Upload Area */}
+                <div
+                  className={`
+                    relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200
+                    ${
+                      dragActive
+                        ? 'border-indigo-500 bg-indigo-50'
+                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    }
+                  `}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={handleImageUpload}
+                  />
+                  <div className="space-y-4">
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                      <CloudArrowUpIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium text-gray-900">Drop images here or click to upload</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        PNG, JPG, WebP up to 10MB each • Maximum 6 images
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Uploaded Images Grid */}
+                {images.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
+                      New Images ({images.length}/6)
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                      {images.map((img, idx) => (
+                        <div
+                          key={idx}
+                          className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <img
+                            src={URL.createObjectURL(img)}
+                            alt={`Preview ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => handleImageRemove(idx)}
+                              className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-all duration-200 transform scale-90 group-hover:scale-100"
+                            >
+                              <XMarkIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(1)}
+                    className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  >
+                    <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    disabled={existingImages.length === 0 && images.length === 0}
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Continue to Specifications
+                    <ArrowLeftIcon className="ml-2 h-4 w-4 rotate-180" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Specifications */}
+          {currentStep === 3 && form.categoryId && (
+            <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-500 to-pink-600 px-6 py-4">
+                <h2 className="text-lg font-semibold text-white flex items-center">
+                  <CogIcon className="h-5 w-5 mr-2" />
+                  Product Specifications
+                </h2>
+                <p className="text-purple-100 text-sm mt-1">
+                  {isMechanicalSeal() 
+                    ? 'Configure mechanical seal attributes and size variations'
+                    : 'Set product size and description'
+                  }
+                </p>
+              </div>
+              
+              <div className="p-6 space-y-8">
+                {!isMechanicalSeal() ? (
+                  /* Regular Product Fields */
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Size *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Small, Medium, Large, 500ml"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                        value={regularProduct.size}
+                        onChange={(e) => handleRegularProductChange('size', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Description *
+                      </label>
+                      <textarea
+                        placeholder="Detailed product description"
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                        value={regularProduct.description}
+                        onChange={(e) => handleRegularProductChange('description', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* Mechanical Seal Fields */
+                  <div className="space-y-8">
+                    {/* Size/Description Pairs */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                          <DocumentTextIcon className="h-5 w-5 mr-2 text-indigo-600" />
+                          Size & Description Variations
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={addSizeDescription}
+                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-1" />
+                          Add Variation
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {mechanicalSealData.sizeDescriptions.map((item, index) => (
+                          <div key={index} className="relative bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Size {index + 1} *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., 25mm, 50mm, 3/4 inch"
+                                  value={item.size}
+                                  onChange={(e) => handleSizeDescriptionChange(index, 'size', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Description {index + 1} *
+                                </label>
+                                <textarea
+                                  placeholder="Description for this size variant"
+                                  rows={2}
+                                  value={item.description}
+                                  onChange={(e) => handleSizeDescriptionChange(index, 'description', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                                  required
+                                />
+                              </div>
+                            </div>
+                            {mechanicalSealData.sizeDescriptions.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => removeSizeDescription(index)}
+                                className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                              >
+                                <XMarkIcon className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Mechanical Seal Attributes for each product size */}
+                    <div className="space-y-6">
+                      <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                        <CogIcon className="h-5 w-5 mr-2 text-purple-600" />
+                        Mechanical Seal Attributes
+                      </h3>
+                      
+                      {mechanicalSealData.sizeDescriptions.map((sizeDesc, sizeIndex) => {
+                        if (!sizeDesc.size.trim() || !sizeDesc.description.trim()) return null;
+                        
+                        // Ensure we have a proper mechanical seal attributes object for this size
+                        if (!mechanicalSealData.mechanicalSealAttributes[sizeIndex]) {
+                          const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+                          updatedAttributes[sizeIndex] = {
+                            sizes: [],
+                            descriptions: [],
+                            material: '',
+                            temperature: '',
+                            pressure: '',
+                            speed: ''
+                          };
+                          setMechanicalSealData({
+                            ...mechanicalSealData,
+                            mechanicalSealAttributes: updatedAttributes
+                          });
+                        }
+                        
+                        const currentAttr = mechanicalSealData.mechanicalSealAttributes[sizeIndex] || {
+                          sizes: [''],
+                          descriptions: [''],
+                          material: '',
+                          temperature: '',
+                          pressure: '',
+                          speed: ''
+                        };
+                        
+                        // Debug log to show current attributes
+                        console.log(`🔍 Size ${sizeIndex} attributes:`, currentAttr);
+                        
+                        return (
+                          <div key={sizeIndex} className="bg-purple-50 rounded-lg p-6 border border-purple-200">
+                            <h4 className="text-md font-medium text-purple-900 mb-4">
+                              Attributes for Size: {sizeDesc.size}
+                            </h4>
+                            
+                            {/* Technical Specifications */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Material *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., Carbon, Ceramic, Silicon Carbide"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.material}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'material', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Temperature Range *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., -20°C to +200°C"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.temperature}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'temperature', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Pressure Rating *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., 0-16 bar, 0-25 bar"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.pressure}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'pressure', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Speed Rating *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., 0-3600 RPM"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.speed}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'speed', e.target.value)}
+                                  required
+                                />
+                              </div>
+                            </div>
+
+                            {/* Mechanical Seal Size/Description Variations */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h5 className="text-sm font-medium text-purple-800">
+                                    Mechanical Seal Specifications
+                                  </h5>
+                                  <p className="text-xs text-purple-600 mt-1">
+                                    Add technical specifications for this product size (e.g., D1, D3, D7 for dimensions)
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => addMechanicalSealSizeDescription(sizeIndex)}
+                                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                                >
+                                  <PlusIcon className="h-4 w-4 mr-1" />
+                                  Add Specification
+                                </button>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                {currentAttr.sizes.map((size, specIndex) => (
+                                  <div key={specIndex} className="relative bg-white rounded-lg p-4 border border-purple-200">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Mechanical Seal Size {specIndex + 1} *
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g., 12mm, 26mm, 24mm"
+                                          value={size}
+                                          onChange={(e) => handleMechanicalSealSizeDescriptionChange(sizeIndex, specIndex, 'size', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                          required
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Mechanical Seal Description {specIndex + 1} *
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g., D1, D3, D7, L(+-0.3)"
+                                          value={currentAttr.descriptions[specIndex] || ''}
+                                          onChange={(e) => handleMechanicalSealSizeDescriptionChange(sizeIndex, specIndex, 'description', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                          required
+                                        />
+                                      </div>
+                                    </div>
+                                    {currentAttr.sizes.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeMechanicalSealSizeDescription(sizeIndex, specIndex)}
+                                        className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                      >
+                                        <XMarkIcon className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                
+                                {/* Show message when no specifications exist */}
+                                {currentAttr.sizes.length === 0 && (
+                                  <div className="bg-gray-100 rounded-lg p-6 text-center">
+                                    <p className="text-gray-500 text-sm">
+                                      No specifications added yet. Click "Add Specification" to get started.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex justify-between pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  >
+                    <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                    Back
+                  </button>
+                  
+                  <div className="flex space-x-3">
                     <button
                       type="button"
-                      onClick={() => handleRemoveExistingImage(index)}
-                      className="remove-image-btn"
+                      onClick={() => navigate('/admin')}
+                      className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                     >
-                      ×
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex items-center px-8 py-3 border border-transparent text-base font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          Updating Product...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircleIcon className="h-5 w-5 mr-2" />
+                          Update Product
+                        </>
+                      )}
                     </button>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* New Images Upload Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-              📤 Add New Images
-            </h3>
-            <p className="text-sm text-gray-600">
-              Upload additional images for this product. You can upload up to 2 images total (max 5MB each).
-            </p>
-            
-            <ImageUpload
-              images={formData.images}
-              onImagesChange={handleImageChange}
-              maxImages={Math.max(0, 2 - formData.existingImages.length)}
-              maxSizePerImage={5 * 1024 * 1024}
-              acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
-              className="w-full"
-            />
-            
-            {errors.images && (
-              <p className="text-red-500 text-sm flex items-center gap-1">
-                <XMarkIcon className="h-4 w-4" />
-                {errors.images}
-              </p>
-            )}
-            
-            <p className="text-xs text-gray-500">
-              Current images: {formData.existingImages.length}, New images: {formData.images.length}, 
-              Total: {formData.existingImages.length + formData.images.length}/2
-            </p>
-          </div>
-
-          {/* Mechanical Seal Attributes Section */}
-          {isMechanicalSeal && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                ⚙️ Mechanical Seal Specifications
-              </h3>
-              <p className="text-sm text-gray-600">
-                Technical specifications for mechanical seal products.
-              </p>
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Material *
-                  </label>
-                  <Input
-                    name="material"
-                    value={formData.material}
-                    onChange={handleInputChange}
-                    placeholder="Enter material (e.g., Carbon Steel, Stainless Steel)"
-                    className={errors.material ? 'border-red-500 focus:ring-red-500' : ''}
-                  />
-                  {errors.material && (
-                    <p className="text-red-500 text-sm flex items-center gap-1">
-                      <XMarkIcon className="h-4 w-4" />
-                      {errors.material}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Temperature *
-                  </label>
-                  <Input
-                    name="temperature"
-                    value={formData.temperature}
-                    onChange={handleInputChange}
-                    placeholder="Enter temperature range (e.g., -20°C to 200°C)"
-                    className={errors.temperature ? 'border-red-500 focus:ring-red-500' : ''}
-                  />
-                  {errors.temperature && (
-                    <p className="text-red-500 text-sm flex items-center gap-1">
-                      <XMarkIcon className="h-4 w-4" />
-                      {errors.temperature}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Pressure *
-                  </label>
-                  <Input
-                    name="pressure"
-                    value={formData.pressure}
-                    onChange={handleInputChange}
-                    placeholder="Enter pressure rating (e.g., 0-16 bar)"
-                    className={errors.pressure ? 'border-red-500 focus:ring-red-500' : ''}
-                  />
-                  {errors.pressure && (
-                    <p className="text-red-500 text-sm flex items-center gap-1">
-                      <XMarkIcon className="h-4 w-4" />
-                      {errors.pressure}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Speed *
-                  </label>
-                  <Input
-                    name="speed"
-                    value={formData.speed}
-                    onChange={handleInputChange}
-                    placeholder="Enter speed rating (e.g., 0-3600 RPM)"
-                    className={errors.speed ? 'border-red-500 focus:ring-red-500' : ''}
-                  />
-                  {errors.speed && (
-                    <p className="text-red-500 text-sm flex items-center gap-1">
-                      <XMarkIcon className="h-4 w-4" />
-                      {errors.speed}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
           )}
-
-          {/* Form Actions */}
-          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-            <div className="text-sm text-gray-500">
-              * Required fields
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                onClick={handleCancel}
-                className="bg-gray-500 hover:bg-gray-600 px-6 py-2"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className={`px-8 py-2 flex items-center gap-2 ${
-                  loading 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-purple-600 hover:bg-purple-700'
-                }`}
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircleIcon className="h-4 w-4" />
-                    Update Product
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
         </form>
       </div>
     </div>
@@ -1082,23 +1429,3 @@ const UpdateProduct = () => {
 };
 
 export default UpdateProduct;
-
-  // Add this function inside the UpdateProduct component
-  const testBackendConnection = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/products', {
-        timeout: 5000,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
-        }
-      });
-      console.log('✅ Backend connection successful');
-      return true;
-    } catch (error) {
-      console.error('❌ Backend connection failed:', error.message);
-      if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
-        toast.error('Cannot connect to backend server. Please ensure it\'s running on http://localhost:5000');
-      }
-      return false;
-    }
-  };

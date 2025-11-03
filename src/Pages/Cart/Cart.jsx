@@ -13,6 +13,7 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import { AuthContext } from '../../context/AuthContext';
+import { openWhatsApp } from '../../utils/whatsappUtils';
 
 const Cart = () => {
   const { user, isAuthenticated } = useContext(AuthContext);
@@ -21,6 +22,7 @@ const Cart = () => {
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [selectedSizes, setSelectedSizes] = useState({});
 
   // Process product images similar to Product.jsx
   const processProductImages = (product) => {
@@ -42,7 +44,7 @@ const Cart = () => {
       if (image.startsWith('http')) {
         return image;
       }
-      return `http://localhost:5000/uploads/products/${image}`;
+      return `https://eme6.com/uploads/products/${image}`;
     });
 
     return constructedUrls;
@@ -59,12 +61,22 @@ const Cart = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `http://localhost:5000/api/cart/${user.id}`,
+        `https://eme6.com/api/cart/${user.id}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
       setCartItems(response.data);
+      
+      // Initialize selected sizes for items that have multiple sizes
+      const initialSizes = {};
+      response.data.forEach(item => {
+        if (item.sizes && item.sizes.length > 1) {
+          // If item already has a size, use it; otherwise use the first available size
+          initialSizes[item.cart_item_id] = item.size || item.sizes[0];
+        }
+      });
+      setSelectedSizes(initialSizes);
     } catch (error) {
       console.error('Error fetching cart:', error);
       toast.error('Failed to load cart items');
@@ -74,12 +86,10 @@ const Cart = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
+    if (user) {
+      fetchCartItems();
     }
-    fetchCartItems();
-  }, [isAuthenticated, user, navigate, fetchCartItems]);
+  }, [user, fetchCartItems]);
 
   const getProductImages = (product) => {
     if (!product.pic) return [];  
@@ -118,7 +128,7 @@ const Cart = () => {
         return imagePath;
       }
       const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-      return `http://localhost:5000${cleanPath}`;
+      return `https://eme6.com${cleanPath}`;
     });
 
     return constructedUrls;
@@ -152,7 +162,7 @@ const Cart = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `http://localhost:5000/api/cart/update/${itemId}`,
+        `https://eme6.com/api/cart/update/${itemId}`,
         { quantity: newQuantity },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -173,12 +183,49 @@ const Cart = () => {
     }
   };
 
+  // Update size
+  const updateSize = async (itemId, newSize) => {
+    try {
+      setUpdating(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.put(
+        `https://eme6.com/api/cart/update/${itemId}`,
+        { size: newSize },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      // Update local state immediately for better UX
+      setSelectedSizes(prev => ({
+        ...prev,
+        [itemId]: newSize
+      }));
+      
+      setCartItems(prev => 
+        prev.map(item => 
+          item.cart_item_id === itemId 
+            ? { ...item, size: newSize }
+            : item
+        )
+      );
+      
+      toast.success('Size updated successfully');
+    } catch (error) {
+      console.error('Error updating size:', error);
+      toast.error('Failed to update size');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   // Remove item
   const removeItem = async (itemId) => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(
-        `http://localhost:5000/api/cart/remove/${itemId}`,
+        `https://eme6.com/api/cart/remove/${itemId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -203,39 +250,84 @@ const Cart = () => {
   };
 
   // Handle order
-  const handleOrder = () => {
+  const handleOrder = async () => {
     const selected = getSelectedItems();
     if (selected.length === 0) {
       toast.warning('Please select items to order');
       return;
     }
     
-    // Navigate to checkout with selected items
-    navigate('/checkout', { state: { items: selected, type: 'order' } });
+    try {
+      const orderData = {
+        userId: user.id,
+        type: 'Order',
+        items: selected.map(item => ({
+          name: item.name,
+          category_name: item.category_name,
+          size: selectedSizes[item.cart_item_id] || item.size,
+          quantity: item.quantity
+        }))
+      };
+      
+      await openWhatsApp(orderData);
+      toast.success('Order request sent to WhatsApp!');
+    } catch (error) {
+      toast.error('Failed to send order request');
+    }
   };
 
   // Handle inquiry
-  const handleInquiry = () => {
+  const handleInquiry = async () => {
     const selected = getSelectedItems();
     if (selected.length === 0) {
       toast.warning('Please select items for inquiry');
       return;
     }
     
-    // Navigate to inquiry form
-    navigate('/inquiry', { state: { items: selected, type: 'inquiry' } });
+    try {
+      const orderData = {
+        userId: user.id,
+        type: 'Inquiry',
+        items: selected.map(item => ({
+          name: item.name,
+          category_name: item.category_name,
+          size: selectedSizes[item.cart_item_id] || item.size,
+          quantity: item.quantity
+        }))
+      };
+      
+      await openWhatsApp(orderData);
+      toast.success('Inquiry request sent to WhatsApp!');
+    } catch (error) {
+      toast.error('Failed to send inquiry request');
+    }
   };
 
   // Handle quote request
-  const handleQuoteRequest = () => {
+  const handleQuoteRequest = async () => {
     const selected = getSelectedItems();
     if (selected.length === 0) {
       toast.warning('Please select items for quote request');
       return;
     }
     
-    // Navigate to quote request form
-    navigate('/quote-request', { state: { items: selected, type: 'quote' } });
+    try {
+      const orderData = {
+        userId: user.id,
+        type: 'Quote',
+        items: selected.map(item => ({
+          name: item.name,
+          category_name: item.category_name,
+          size: selectedSizes[item.cart_item_id] || item.size,
+          quantity: item.quantity
+        }))
+      };
+      
+      await openWhatsApp(orderData);
+      toast.success('Quote request sent to WhatsApp!');
+    } catch (error) {
+      toast.error('Failed to send quote request');
+    }
   };
 
   if (loading) {
@@ -346,8 +438,10 @@ const Cart = () => {
                       >
                         <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
                         <p className="text-gray-400 text-sm mb-2">{item.category_name}</p>
-                        {item.size && (
-                          <p className="text-red-400 text-sm">Size: {item.size}</p>
+                        {(selectedSizes[item.cart_item_id] || item.size) && (
+                          <p className="text-red-400 text-sm">
+                            Size: {selectedSizes[item.cart_item_id] || item.size}
+                          </p>
                         )}
                       </div>
                       
@@ -369,6 +463,25 @@ const Cart = () => {
                           <PlusIcon className="h-4 w-4" />
                         </button>
                       </div>
+                      
+                      {/* Size Selection - Only show if product has multiple sizes */}
+                      {item.sizes && item.sizes.length > 1 && (
+                        <div className="flex flex-col space-y-1">
+                          <label className="text-xs text-gray-400">Size:</label>
+                          <select
+                            value={selectedSizes[item.cart_item_id] || item.size || item.sizes[0]}
+                            onChange={(e) => updateSize(item.cart_item_id, e.target.value)}
+                            disabled={updating}
+                            className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-red-500 disabled:opacity-50"
+                          >
+                            {item.sizes.map((size, index) => (
+                              <option key={index} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       
                       {/* Remove Button */}
                       <button
@@ -423,6 +536,7 @@ const Cart = () => {
           </>
         )}
       </div>
+
     </div>
   );
 };

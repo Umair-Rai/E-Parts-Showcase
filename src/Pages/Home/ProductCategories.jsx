@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { ArrowRightIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import { useNavigate } from "react-router-dom";
+import { processImageArray } from '../../utils/imageUtils'; // ✅ Centralized image URL handling
 
 export default function ProductCategories() {
   const [categories, setCategories] = useState([]);
@@ -14,58 +15,25 @@ export default function ProductCategories() {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/categories");
+      const response = await axios.get("https://eme6.com/api/categories");
       console.log('📊 Fetched categories:', response.data);
       setCategories(response.data);
     } catch (error) {
       console.error("❌ Failed to fetch categories:", error);
-      toast.error("Failed to load categories. Please try again later.");
+      // ✅ No toast error - silently handle failure
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Process category images
+  // ✅ Process category images - Uses centralized utility to construct full URLs
+  // Images from DB: "/uploads/categories/seal1.jpg" → "https://eme6.com/uploads/categories/seal1.jpg"
   const getCategoryImages = (category) => {
     if (!category.pic) return [];
     
-    let imageArray = [];
-    
-    try {
-      if (Array.isArray(category.pic)) {
-        imageArray = category.pic;
-      } else if (typeof category.pic === 'string') {
-        if (category.pic.startsWith('{') && category.pic.endsWith('}')) {
-          // Handle Postgres TEXT[] format: {"url1","url2"}
-          const cleanedString = category.pic
-            .replace(/[{}"]/g, '') // Remove {, }, and " characters
-            .split(',')
-            .map(url => url.trim())
-            .filter(url => url.length > 0);
-          imageArray = cleanedString;
-        } else {
-          try {
-            imageArray = JSON.parse(category.pic);
-          } catch {
-            imageArray = [category.pic];
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error processing category images:', error);
-      return [];
-    }
-
-    // Construct full URLs
-    const constructedUrls = imageArray.map(imagePath => {
-      if (imagePath.startsWith('http')) {
-        return imagePath;
-      }
-      const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-      return `http://localhost:5000${cleanPath}`;
-    });
-
-    return constructedUrls;
+    // Use the centralized image processing utility
+    return processImageArray(category.pic);
   };
 
   // Check if category is special
@@ -80,6 +48,18 @@ export default function ProductCategories() {
 
   useEffect(() => {
     fetchCategories();
+    
+    // ✅ Listen for category updates
+    const handleCategoryUpdate = () => {
+      console.log('🔄 Category updated, refreshing...');
+      fetchCategories();
+    };
+    
+    window.addEventListener('categoryUpdated', handleCategoryUpdate);
+    
+    return () => {
+      window.removeEventListener('categoryUpdated', handleCategoryUpdate);
+    };
   }, []);
 
   if (loading) {

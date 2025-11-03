@@ -22,7 +22,7 @@ const UpdateCategory = () => {
   const { categoryId } = useParams(); // Fixed: Changed from 'id' to 'categoryId'
   
   // Move API_BASE_URL to component level (before any useEffect or functions)
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://eme6.com';
   
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -43,7 +43,9 @@ const UpdateCategory = () => {
         const adminToken = localStorage.getItem('adminToken');
         
         if (!adminToken) {
-          toast.error('Authentication required. Please login again.');
+          toast.error('Authentication required. Please login again.', {
+            toastId: 'auth-required',
+          });
           navigate('/admin/login');
           return;
         }
@@ -104,13 +106,19 @@ const UpdateCategory = () => {
         console.error('❌ Failed to fetch category:', error);
         
         if (error.response?.status === 404) {
-          toast.error('Category not found');
+          toast.error('Category not found', {
+            toastId: 'category-not-found',
+          });
         } else if (error.response?.status === 401) {
-          toast.error('Authentication required. Please login again.');
+          toast.error('Authentication required. Please login again.', {
+            toastId: 'auth-required-fetch',
+          });
           navigate('/admin/login');
           return;
         } else {
-          toast.error('Failed to load category data');
+          toast.error('Failed to load category data', {
+            toastId: 'fetch-error',
+          });
         }
         
         navigate('/admin');
@@ -173,6 +181,15 @@ const UpdateCategory = () => {
     }
     
     setErrors(newErrors);
+    
+    // Show single toast with first error instead of multiple toasts
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      toast.error(firstError, {
+        toastId: 'validation-error', // Single ID prevents duplicates
+      });
+    }
+    
     return Object.keys(newErrors).length === 0;
   };
 
@@ -181,7 +198,7 @@ const UpdateCategory = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      toast.error('Please fix the errors before submitting');
+      // Toast already shown in validateForm(), no need for another one
       return;
     }
     
@@ -191,7 +208,9 @@ const UpdateCategory = () => {
       const adminToken = localStorage.getItem('adminToken');
       
       if (!adminToken) {
-        toast.error('Authentication required. Please login again.');
+        toast.error('Authentication required. Please login again.', {
+          toastId: 'auth-required-submit',
+        });
         navigate('/admin/login');
         return;
       }
@@ -199,14 +218,24 @@ const UpdateCategory = () => {
       // Create FormData for file upload
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name.trim());
-      formDataToSend.append('specialCategory', formData.specialCategory);
+      formDataToSend.append('specialCategory', formData.specialCategory.toString());
       
-      // Send existing images that should be kept
-      formDataToSend.append('existingImages', JSON.stringify(formData.existingImages));
+      // ✅ FIX: Ensure existingImages is properly stringified
+      const existingImagesArray = Array.isArray(formData.existingImages) 
+        ? formData.existingImages 
+        : [];
+      formDataToSend.append('existingImages', JSON.stringify(existingImagesArray));
       
       // Append new image files
       formData.images.forEach((file, index) => {
         formDataToSend.append('images', file);
+      });
+      
+      console.log('Sending update data:', {
+        name: formData.name.trim(),
+        specialCategory: formData.specialCategory,
+        existingImages: existingImagesArray,
+        newImagesCount: formData.images.length
       });
       
       const response = await axios.put(
@@ -220,28 +249,66 @@ const UpdateCategory = () => {
         }
       );
       
-      toast.success('Category updated successfully!');
+      console.log('✅ Category updated successfully:', response.data);
+      
+      toast.success('Category updated successfully!', {
+        toastId: 'update-success',
+      });
+      
+      // ✅ Trigger a storage event to notify other components to refresh
+      window.dispatchEvent(new Event('categoryUpdated'));
       
       // Navigate back to categories list after a short delay
       setTimeout(() => {
-        navigate('/admin');
-      }, 2000);
+        navigate('/admin', { replace: true, state: { refresh: true } });
+      }, 1500);
       
     } catch (error) {
       console.error('❌ Failed to update category:', error);
       
       // Enhanced error handling
-      if (error.code === 'NETWORK_ERROR') {
-        toast.error('Network error. Please check your connection.');
+      if (error.code === 'NETWORK_ERROR' || !error.response) {
+        toast.error('Network error. Please check your connection and ensure backend is running.', {
+          toastId: 'network-error',
+        });
       } else if (error.response?.status === 413) {
-        toast.error('File too large. Please reduce image size.');
+        toast.error('File too large. Please reduce image size.', {
+          toastId: 'file-size-error',
+        });
       } else if (error.response?.status === 404) {
-        toast.error('Category not found');
+        toast.error('Category not found', {
+          toastId: 'not-found-error',
+        });
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied. You do not have permission to update categories.', {
+          toastId: 'permission-error',
+        });
+      } else if (error.response?.status === 401) {
+        toast.error('Authentication failed. Please login again.', {
+          toastId: 'auth-error',
+        });
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+      } else if (error.response?.data?.error) {
+        toast.error(error.response.data.error, {
+          toastId: 'api-error',
+        });
       } else if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
+        toast.error(error.response.data.message, {
+          toastId: 'api-message-error',
+        });
       } else {
-        toast.error('Failed to update category. Please try again.');
+        toast.error(`Failed to update category. Status: ${error.response?.status || 'Unknown'}`, {
+          toastId: 'unknown-error',
+        });
       }
+      
+      // Log detailed error for debugging
+      console.error('Update error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
     } finally {
       setLoading(false);
     }

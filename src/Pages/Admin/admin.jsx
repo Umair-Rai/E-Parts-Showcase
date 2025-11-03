@@ -3,7 +3,6 @@ import {
   HomeIcon,
   CubeIcon,
   Squares2X2Icon,
-  ClipboardIcon,
   UsersIcon,
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
@@ -11,7 +10,6 @@ import {
 import AdminDashboard from './AdminDashboard';
 import ViewAllProduct from './ViewAllProduct';
 import ViewAllCategories from './ViewAllCategories';
-import ManageOrders from './ManageOrders';
 import CustomerManagement from './CustomerManagement';
 import AccountSettings from './AccountSetting';
 
@@ -19,7 +17,6 @@ const navItems = [
   { label: 'Dashboard', icon: HomeIcon },
   { label: 'Products', icon: CubeIcon },
   { label: 'Categories', icon: Squares2X2Icon },
-  { label: 'Orders', icon: ClipboardIcon },
   { label: 'Customers', icon: UsersIcon },
   { label: 'Settings', icon: Cog6ToothIcon },
 ];
@@ -35,8 +32,6 @@ export default function Admin() {
         return <ViewAllProduct />;
        case 'Categories':
         return <ViewAllCategories />;
-       case 'Orders':
-         return <ManageOrders />;
        case 'Customers':
          return <CustomerManagement />;
        case 'Settings':
@@ -56,7 +51,7 @@ export default function Admin() {
             onClick={() => setActiveNav(label)}
             className={`flex items-center space-x-3 px-4 py-2 rounded-lg mb-2 cursor-pointer transition-all duration-200 ease-in-out ${
               activeNav === label
-                ? 'bg-purple-100 text-purple-600 font-semibold'
+                ? 'bg-red-100 text-red-600 font-semibold'
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
           >

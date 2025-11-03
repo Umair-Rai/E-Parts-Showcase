@@ -51,7 +51,7 @@ export default function ViewAllProducts() {
         return;
       }
 
-      const res = await axios.get("http://localhost:5000/api/products", {
+      const res = await axios.get("https://eme6.com/api/products", {
         headers: {
           Authorization: `Bearer ${adminToken}`
         },
@@ -100,7 +100,7 @@ export default function ViewAllProducts() {
         return; // Don't redirect here, let fetchProducts handle it
       }
       
-      const res = await axios.get("http://localhost:5000/api/categories", {
+      const res = await axios.get("https://eme6.com/api/categories", {
         headers: {
           Authorization: `Bearer ${adminToken}`
         },
@@ -130,7 +130,7 @@ export default function ViewAllProducts() {
       // Fetch attributes for each product that might have mechanical seal data
       for (const product of products) {
         try {
-          const res = await axios.get(`http://localhost:5000/api/mechanical-seals/product/${product.id}`, {
+          const res = await axios.get(`https://eme6.com/api/mechanical-seals/product/${product.id}`, {
             headers: {
               Authorization: `Bearer ${adminToken}`
             },
@@ -196,7 +196,7 @@ export default function ViewAllProducts() {
   //       return;
   //     }
   
-  //     const res = await axios.get("http://localhost:5000/api/products", {
+  //     const res = await axios.get("https://eme6.com/api/products", {
   //       headers: {
   //         Authorization: `Bearer ${adminToken}`
   //       },
@@ -239,7 +239,7 @@ export default function ViewAllProducts() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
         <span className="ml-3 text-gray-600">
           Loading products... {retryCount > 0 && `(Retry ${retryCount}/3)`}
         </span>
@@ -253,7 +253,7 @@ export default function ViewAllProducts() {
         <div className="text-red-600 mb-4">{error}</div>
         <button 
           onClick={() => fetchProducts()} 
-          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
         >
           Retry
         </button>
@@ -268,7 +268,7 @@ export default function ViewAllProducts() {
 
     try {
       const adminToken = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/products/${productId}`, {
+      await axios.delete(`https://eme6.com/api/products/${productId}`, {
         headers: {
           Authorization: `Bearer ${adminToken}`
         }
@@ -361,7 +361,7 @@ export default function ViewAllProducts() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
         <span className="ml-3 text-gray-600">Loading products...</span>
       </div>
     );
@@ -374,8 +374,8 @@ export default function ViewAllProducts() {
       {/* Header Section */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <CubeIcon className="h-6 w-6 text-purple-600" />
+          <div className="p-2 bg-red-100 rounded-lg">
+            <CubeIcon className="h-6 w-6 text-red-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800">Product Management</h1>
         </div>
@@ -385,8 +385,8 @@ export default function ViewAllProducts() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           <div className="bg-white p-4 rounded-xl shadow-sm border">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <CubeIcon className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-red-100 rounded-lg">
+                <CubeIcon className="h-5 w-5 text-red-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total Products</p>
@@ -419,7 +419,7 @@ export default function ViewAllProducts() {
               placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 input-search"
             />
           </div>
           
@@ -436,7 +436,7 @@ export default function ViewAllProducts() {
           {/* Add Product Button */}
           <Link
             to="/admin/add-product"
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
           >
             <PlusIcon className="h-5 w-5" />
             Add Product
@@ -472,7 +472,7 @@ export default function ViewAllProducts() {
       <div className="bg-white rounded-xl shadow-sm border">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <CubeIcon className="h-5 w-5 text-purple-600" />
+            <CubeIcon className="h-5 w-5 text-red-600" />
             <h2 className="text-xl font-semibold text-gray-800">All Products</h2>
             <span className="text-sm text-gray-500">({filteredProducts.length})</span>
           </div>
@@ -485,7 +485,7 @@ export default function ViewAllProducts() {
             <p className="text-gray-500 mb-6">Try adjusting your search or filters, or add a new product.</p>
             <Link
               to="/admin/add-product"
-              className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg transition-colors font-medium"
             >
               <PlusIcon className="h-5 w-5" />
               Add Your First Product
@@ -506,7 +506,7 @@ export default function ViewAllProducts() {
                   <div className="relative h-48 bg-gray-100">
                     {images.length > 0 ? (
                       <img
-                        src={images[0].startsWith('http') ? images[0] : `http://localhost:5000${images[0]}`}
+                        src={images[0].startsWith('http') ? images[0] : `https://eme6.com${images[0]}`}
                         alt={product.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -565,7 +565,7 @@ export default function ViewAllProducts() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleViewProduct(product)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
                       >
                         <EyeIcon className="h-4 w-4" />
                         View
@@ -599,8 +599,8 @@ export default function ViewAllProducts() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <CubeIcon className="h-6 w-6 text-purple-600" />
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <CubeIcon className="h-6 w-6 text-red-600" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800">
                     {selectedProduct.name}
@@ -628,7 +628,7 @@ export default function ViewAllProducts() {
                       {images.map((imagePath, index) => (
                         <img
                           key={index}
-                          src={imagePath.startsWith('http') ? imagePath : `http://localhost:5000${imagePath}`}
+                          src={imagePath.startsWith('http') ? imagePath : `https://eme6.com${imagePath}`}
                           alt={`${selectedProduct.name} ${index + 1}`}
                           className="w-full h-32 object-cover rounded-lg border"
                           onError={(e) => {
@@ -736,7 +736,7 @@ export default function ViewAllProducts() {
                   setShowModal(false);
                   navigate(`/admin/update-product/${selectedProduct.id}`);
                 }}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Edit Product
               </button>

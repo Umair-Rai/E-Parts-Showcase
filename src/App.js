@@ -19,11 +19,9 @@ import ProductCatalog from "./Pages/Product/product";
 import ProductDetail from "./Pages/Product/ProductDetail";
 import AdminLogin from "./Pages/Admin/Adminlogin";
 import AdminRoute from "./Component/AdminRoutes";
+import CustomerRoute from "./Component/CustomerRoute";
 import Profile from "./Pages/Profile/profile";
 import Cart from "./Pages/Cart/Cart";
-import Checkout from "./Pages/Checkout/Checkout";
-import Inquiry from "./Pages/Inquiry/Inquiry";
-import QuoteRequest from "./Pages/Quote/QuoteRequest";
 
 function App() {
   return (
@@ -42,14 +40,19 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             
-            {/* User Profile Route */}
-            <Route path="/profile" element={<Profile />} />
+            {/* Protected Customer Routes */}
+            <Route path="/profile" element={
+              <CustomerRoute>
+                <Profile />
+              </CustomerRoute>
+            } />
             
-            {/* Cart Route */}
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/inquiry" element={<Inquiry />} />
-            <Route path="/quote-request" element={<QuoteRequest />} />
+            <Route path="/cart" element={
+              <CustomerRoute>
+                <Cart />
+              </CustomerRoute>
+            } />
+            
             
             {/* Protected Admin Routes */}
             <Route path="/admin" element={

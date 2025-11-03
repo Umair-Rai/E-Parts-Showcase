@@ -19,12 +19,13 @@ const AboutHeroSection = () => {
         </button>
       </div>
 
-      {/* Optional Image or Logo Placeholder */}
+      {/* About Image */}
       <div className="hidden md:block md:w-1/2">
-        {/* You can place a logo or image here */}
-        <div className="w-full h-64 bg-gray-800 rounded-xl flex items-center justify-center text-gray-400">
-          Image Placeholder
-        </div>
+        <img
+          src="/pics/about.jpg"
+          alt="About A.S - Automotive Parts and Services"
+          className="w-full h-64 object-cover rounded-xl shadow-lg"
+        />
       </div>
     </section>
   );

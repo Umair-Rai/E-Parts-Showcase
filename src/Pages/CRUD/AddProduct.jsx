@@ -40,21 +40,13 @@ const AddProduct = () => {
     description: ''
   });
 
-  // For mechanical seal products
+  // For mechanical seal products - each product size will have its own mechanical seal attributes
   const [mechanicalSealData, setMechanicalSealData] = useState({
     sizeDescriptions: [{ size: '', description: '' }],
-    attributes: {
-      material: '',
-      temperature: '',
-      pressure: '',
-      speed: ''
-    }
+    // This will store mechanical seal attributes for each product size
+    mechanicalSealAttributes: []
   });
 
-  // For technical specifications (separate from mechanical seal attributes)
-  const [technicalSpecs, setTechnicalSpecs] = useState([
-    { size: '', description: '' }
-  ]);
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -64,7 +56,7 @@ const AddProduct = () => {
   const fetchCategories = async () => {
     try {
       const token = localStorage.getItem('adminToken'); // Changed from 'token' to 'adminToken'
-      const response = await axios.get('http://localhost:5000/api/categories', {
+      const response = await axios.get('https://eme6.com/api/categories', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -72,14 +64,16 @@ const AddProduct = () => {
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      toast.error('Failed to fetch categories');
+      toast.error('Failed to fetch categories', {
+        toastId: 'fetch-categories-error', // Prevent duplicate toasts
+      });
     }
   };
 
   // Check if selected category is mechanical seal
   const isMechanicalSeal = () => {
     const selectedCategory = categories.find(cat => cat.id === parseInt(form.categoryId));
-    return selectedCategory?.name?.toLowerCase() === 'mechanical seals';
+    return selectedCategory?.special_category === true || selectedCategory?.name?.toLowerCase() === 'mechanical seals';
   };
 
   // Image handling functions
@@ -127,14 +121,8 @@ const AddProduct = () => {
       setRegularProduct({ size: '', description: '' });
       setMechanicalSealData({
         sizeDescriptions: [{ size: '', description: '' }],
-        attributes: {
-          material: '',
-          temperature: '',
-          pressure: '',
-          speed: ''
-        }
+        mechanicalSealAttributes: []
       });
-      setTechnicalSpecs([{ size: '', description: '' }]);
     }
   };
 
@@ -142,13 +130,27 @@ const AddProduct = () => {
     setRegularProduct({ ...regularProduct, [field]: value });
   };
 
-  const handleMechanicalSealChange = (field, value) => {
+  // Handle mechanical seal attributes for a specific product size
+  const handleMechanicalSealChange = (sizeIndex, field, value) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    // Ensure we have an object for this size index
+    if (!updatedAttributes[sizeIndex]) {
+      updatedAttributes[sizeIndex] = {
+        sizes: [],
+        descriptions: [],
+        material: '',
+        temperature: '',
+        pressure: '',
+        speed: ''
+      };
+    }
+    
+    updatedAttributes[sizeIndex][field] = value;
+    
     setMechanicalSealData({
       ...mechanicalSealData,
-      attributes: {
-        ...mechanicalSealData.attributes,
-        [field]: value
-      }
+      mechanicalSealAttributes: updatedAttributes
     });
   };
 
@@ -179,36 +181,113 @@ const AddProduct = () => {
     });
   };
 
-  // Technical Specifications functions
-  const addTechnicalSpec = () => {
-    setTechnicalSpecs([...technicalSpecs, { size: '', description: '' }]);
+  // Handle mechanical seal size/description pairs for a specific product size
+  const handleMechanicalSealSizeDescriptionChange = (sizeIndex, specIndex, field, value) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    // Ensure we have an object for this size index
+    if (!updatedAttributes[sizeIndex]) {
+      updatedAttributes[sizeIndex] = {
+        sizes: [],
+        descriptions: [],
+        material: '',
+        temperature: '',
+        pressure: '',
+        speed: ''
+      };
+    }
+    
+    const isSizeField = field === 'size';
+    const targetArray = isSizeField ? 'sizes' : 'descriptions';
+    const otherArray = isSizeField ? 'descriptions' : 'sizes';
+    
+    const updatedSpecs = [...updatedAttributes[sizeIndex][targetArray]];
+    const otherSpecs = [...updatedAttributes[sizeIndex][otherArray]];
+    
+    // Ensure both arrays have enough items to match the specIndex
+    while (updatedSpecs.length <= specIndex) {
+      updatedSpecs.push('');
+    }
+    while (otherSpecs.length <= specIndex) {
+      otherSpecs.push('');
+    }
+    
+    // Update the target array
+    updatedSpecs[specIndex] = value;
+    updatedAttributes[sizeIndex][targetArray] = updatedSpecs;
+    
+    // Ensure the other array has the same length
+    updatedAttributes[sizeIndex][otherArray] = otherSpecs;
+    
+    setMechanicalSealData({
+      ...mechanicalSealData,
+      mechanicalSealAttributes: updatedAttributes
+    });
   };
 
-  const removeTechnicalSpec = (index) => {
-    if (technicalSpecs.length > 1) {
-      const updated = [...technicalSpecs];
-      updated.splice(index, 1);
-      setTechnicalSpecs(updated);
+  const addMechanicalSealSizeDescription = (sizeIndex) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    // Ensure we have an object for this size index
+    if (!updatedAttributes[sizeIndex]) {
+      updatedAttributes[sizeIndex] = {
+        sizes: [],
+        descriptions: [],
+        material: '',
+        temperature: '',
+        pressure: '',
+        speed: ''
+      };
+    }
+    
+    // If sizes array is empty, initialize with one empty item
+    if (updatedAttributes[sizeIndex].sizes.length === 0) {
+      updatedAttributes[sizeIndex].sizes = [''];
+      updatedAttributes[sizeIndex].descriptions = [''];
+    } else {
+      // Add a new empty item
+      updatedAttributes[sizeIndex].sizes.push('');
+      updatedAttributes[sizeIndex].descriptions.push('');
+    }
+    
+    setMechanicalSealData({
+      ...mechanicalSealData,
+      mechanicalSealAttributes: updatedAttributes
+    });
+  };
+
+  const removeMechanicalSealSizeDescription = (sizeIndex, specIndex) => {
+    const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+    
+    if (updatedAttributes[sizeIndex] && updatedAttributes[sizeIndex].sizes.length > 1) {
+      updatedAttributes[sizeIndex].sizes.splice(specIndex, 1);
+      updatedAttributes[sizeIndex].descriptions.splice(specIndex, 1);
+      
+      setMechanicalSealData({
+        ...mechanicalSealData,
+        mechanicalSealAttributes: updatedAttributes
+      });
     }
   };
 
-  const handleTechnicalSpecChange = (index, field, value) => {
-    const updated = [...technicalSpecs];
-    updated[index][field] = value;
-    setTechnicalSpecs(updated);
-  };
 
   const validateForm = () => {
     if (!form.productName.trim()) {
-      toast.error('Product name is required');
+      toast.error('Product name is required', {
+        toastId: 'product-name-required',
+      });
       return false;
     }
     if (!form.categoryId) {
-      toast.error('Please select a category');
+      toast.error('Please select a category', {
+        toastId: 'category-required',
+      });
       return false;
     }
     if (images.length === 0) {
-      toast.error('Please upload at least one image');
+      toast.error('Please upload at least one image', {
+        toastId: 'image-required',
+      });
       return false;
     }
 
@@ -217,28 +296,51 @@ const AddProduct = () => {
         item => item.size.trim() && item.description.trim()
       );
       if (!hasValidSizeDescription) {
-        toast.error('Please provide at least one size and description pair');
+        toast.error('Please provide at least one size and description pair', {
+          toastId: 'size-desc-required',
+        });
         return false;
       }
       
-      const { material, temperature, pressure, speed } = mechanicalSealData.attributes;
-      if (!material.trim() || !temperature.trim() || !pressure.trim() || !speed.trim()) {
-        toast.error('All mechanical seal attributes are required');
-        return false;
-      }
-
-      // Validate technical specifications
-      const hasValidTechnicalSpec = technicalSpecs.some(
-        spec => spec.size.trim() && spec.description.trim()
-      );
-      
-      if (!hasValidTechnicalSpec) {
-        toast.error('At least one technical specification with size and description is required');
-        return false;
+      // Validate mechanical seal attributes for each product size
+      for (let i = 0; i < mechanicalSealData.sizeDescriptions.length; i++) {
+        const sizeDesc = mechanicalSealData.sizeDescriptions[i];
+        if (sizeDesc.size.trim() && sizeDesc.description.trim()) {
+          const attr = mechanicalSealData.mechanicalSealAttributes[i];
+          if (!attr || !attr.material?.trim() || !attr.temperature?.trim() || 
+              !attr.pressure?.trim() || !attr.speed?.trim()) {
+            toast.error(`All mechanical seal attributes are required for size: ${sizeDesc.size}`, {
+              toastId: `ms-attr-required-${i}`,
+            });
+            return false;
+          }
+          
+          // Validate that mechanical seal sizes and descriptions have the same length
+          if (!attr.sizes || !attr.descriptions || attr.sizes.length !== attr.descriptions.length) {
+            toast.error(`Mechanical seal sizes and descriptions must have the same length for product size: ${sizeDesc.size}. Sizes: ${attr.sizes?.length || 0}, Descriptions: ${attr.descriptions?.length || 0}`, {
+              toastId: `ms-length-mismatch-${i}`,
+            });
+            return false;
+          }
+          
+          // Validate that all mechanical seal size/description pairs are filled
+          const hasValidMechanicalSpec = attr.sizes.some((size, index) => 
+            size.trim() && attr.descriptions[index]?.trim()
+          );
+          
+          if (!hasValidMechanicalSpec) {
+            toast.error(`At least one mechanical seal size/description pair is required for product size: ${sizeDesc.size}`, {
+              toastId: `ms-spec-required-${i}`,
+            });
+            return false;
+          }
+        }
       }
     } else {
       if (!regularProduct.size.trim() || !regularProduct.description.trim()) {
-        toast.error('Size and description are required');
+        toast.error('Size and description are required', {
+          toastId: 'regular-product-required',
+        });
         return false;
       }
     }
@@ -259,7 +361,9 @@ const AddProduct = () => {
       const token = localStorage.getItem('adminToken'); // Changed from 'token' to 'adminToken'
       
       if (!token) {
-        toast.error('Authentication required. Please login again.');
+        toast.error('Authentication required. Please login again.', {
+          toastId: 'auth-required',
+        });
         navigate('/admin/login');
         return;
       }
@@ -278,18 +382,41 @@ const AddProduct = () => {
         
         formData.append('sizes', JSON.stringify(sizes));
         formData.append('descriptions', JSON.stringify(descriptions));
+        
+        // Prepare mechanical seal attributes for each product size
+        const mechanicalSealAttributes = [];
+        for (let i = 0; i < sizes.length; i++) {
+          const attr = mechanicalSealData.mechanicalSealAttributes[i];
+          if (attr) {
+            // Filter out empty mechanical seal size/description pairs
+            const filteredSizes = attr.sizes.filter(size => size.trim());
+            const filteredDescriptions = attr.descriptions.filter(desc => desc.trim());
+            
+            mechanicalSealAttributes.push({
+              sizes: filteredSizes,
+              descriptions: filteredDescriptions,
+              material: attr.material,
+              temperature: attr.temperature,
+              pressure: attr.pressure,
+              speed: attr.speed
+            });
+          }
+        }
+        
+        formData.append('mechanicalSealAttributes', JSON.stringify(mechanicalSealAttributes));
       } else {
         formData.append('sizes', JSON.stringify([regularProduct.size.trim()]));
         formData.append('descriptions', JSON.stringify([regularProduct.description.trim()]));
       }
 
-      // Fix: Append images with correct field name
+      // Append images with correct field name
       images.forEach((file) => {
         formData.append('productImages', file);
       });
 
+      // Use the new API endpoint for products with mechanical seal attributes
       const productResponse = await axios.post(
-        'http://localhost:5000/api/products',
+        isMechanicalSeal() ? 'https://eme6.com/api/products/add' : 'https://eme6.com/api/products',
         formData,
         {
           headers: {
@@ -299,55 +426,63 @@ const AddProduct = () => {
         }
       );
 
-      const productId = productResponse.data.id;
-
-      if (isMechanicalSeal()) {
-        // Prepare sizes and descriptions from technical specifications
-        const specSizes = technicalSpecs
-          .filter(spec => spec.size.trim())
-          .map(spec => spec.size.trim());
-        const specDescriptions = technicalSpecs
-          .filter(spec => spec.description.trim())
-          .map(spec => spec.description.trim());
-
-        // Send all mechanical seal data in one API call
-        await axios.post(
-          'http://localhost:5000/api/mechanical-seal-attributes',
-          {
-            productId,
-            sizes: specSizes,
-            descriptions: specDescriptions,
-            ...mechanicalSealData.attributes
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      }
-
-      toast.success('Product created successfully!');
+      // ✅ Show success toast only once
+      toast.success('Product created successfully!', {
+        toastId: 'product-success', // Prevent duplicate toasts
+      });
       
-      // Reset form - REMOVE adminId reference
-      setForm({ productName: '', categoryId: '' }); // Removed adminId reference
+      // Reset form
+      setForm({ productName: '', categoryId: '' });
       setRegularProduct({ size: '', description: '' });
       setMechanicalSealData({
         sizeDescriptions: [{ size: '', description: '' }],
-        attributes: { material: '', temperature: '', pressure: '', speed: '' }
+        mechanicalSealAttributes: []
       });
-      setTechnicalSpecs([{ size: '', description: '' }]);
       setImages([]);
       setCurrentStep(1);
       
       setTimeout(() => {
         navigate('/admin');
-      }, 2000);
+      }, 1500); // Reduced timeout to 1.5s
       
     } catch (error) {
-      console.error('Error creating product:', error);
-      toast.error(error.response?.data?.message || 'Failed to create product');
+      console.error('❌ Error creating product:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error request:', error.config);
+      
+      // Enhanced error handling with detailed messages
+      if (error.code === 'NETWORK_ERROR' || !error.response) {
+        toast.error('Network error. Please check your connection and ensure the backend server is running.', {
+          toastId: 'network-error',
+        });
+      } else if (error.response?.status === 401) {
+        toast.error('Authentication failed. Please login again.', {
+          toastId: 'auth-error',
+        });
+        localStorage.removeItem('adminToken');
+        navigate('/admin/login');
+      } else if (error.response?.status === 413) {
+        toast.error('File too large. Please reduce image size.', {
+          toastId: 'file-size-error',
+        });
+      } else if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.message || 'Invalid data provided';
+        toast.error(`Validation Error: ${errorMessage}`, {
+          toastId: 'validation-error',
+        });
+      } else if (error.response?.status === 500) {
+        toast.error('Server error. Please check the backend logs.', {
+          toastId: 'server-error',
+        });
+      } else if (error.response?.data?.message) {
+        toast.error(`Error: ${error.response.data.message}`, {
+          toastId: 'api-error',
+        });
+      } else {
+        toast.error(`Failed to create product. Status: ${error.response?.status || 'Unknown'}`, {
+          toastId: 'unknown-error',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -664,6 +799,7 @@ const AddProduct = () => {
               </div>
               
               <div className="p-6 space-y-8">
+
                 {!isMechanicalSeal() ? (
                   /* Regular Product Fields */
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -759,130 +895,183 @@ const AddProduct = () => {
                       </div>
                     </div>
 
-                    {/* Mechanical Seal Attributes */}
-                    <div className="space-y-4">
+                    {/* Mechanical Seal Attributes for each product size */}
+                    <div className="space-y-6">
                       <h3 className="text-lg font-medium text-gray-900 flex items-center">
                         <CogIcon className="h-5 w-5 mr-2 text-purple-600" />
-                        Technical Specifications
+                        Mechanical Seal Attributes
                       </h3>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Material *
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g., Carbon, Ceramic, Silicon Carbide"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
-                            value={mechanicalSealData.attributes.material}
-                            onChange={(e) => handleMechanicalSealChange('material', e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Temperature Range *
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g., -20°C to +200°C"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
-                            value={mechanicalSealData.attributes.temperature}
-                            onChange={(e) => handleMechanicalSealChange('temperature', e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Pressure Rating *
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g., 0-16 bar, 0-25 bar"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
-                            value={mechanicalSealData.attributes.pressure}
-                            onChange={(e) => handleMechanicalSealChange('pressure', e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Speed Rating *
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g., 0-3600 RPM"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
-                            value={mechanicalSealData.attributes.speed}
-                            onChange={(e) => handleMechanicalSealChange('speed', e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Technical Specifications - Size & Description Variations */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-md font-medium text-gray-900 flex items-center">
-                          <DocumentTextIcon className="h-4 w-4 mr-2 text-indigo-600" />
-                          Technical Specifications - Size & Description Variations
-                        </h4>
-                        <button
-                          type="button"
-                          onClick={addTechnicalSpec}
-                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                        >
-                          <PlusIcon className="h-4 w-4 mr-1" />
-                          Add Specification
-                        </button>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        {technicalSpecs.map((spec, index) => (
-                          <div key={index} className="relative bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {mechanicalSealData.sizeDescriptions.map((sizeDesc, sizeIndex) => {
+                        if (!sizeDesc.size.trim() || !sizeDesc.description.trim()) return null;
+                        
+                        // Ensure we have a proper mechanical seal attributes object for this size
+                        if (!mechanicalSealData.mechanicalSealAttributes[sizeIndex]) {
+                          const updatedAttributes = [...mechanicalSealData.mechanicalSealAttributes];
+                          updatedAttributes[sizeIndex] = {
+                            sizes: [''],
+                            descriptions: [''],
+                            material: '',
+                            temperature: '',
+                            pressure: '',
+                            speed: ''
+                          };
+                          setMechanicalSealData({
+                            ...mechanicalSealData,
+                            mechanicalSealAttributes: updatedAttributes
+                          });
+                        }
+                        
+                        const currentAttr = mechanicalSealData.mechanicalSealAttributes[sizeIndex] || {
+                          sizes: [''],
+                          descriptions: [''],
+                          material: '',
+                          temperature: '',
+                          pressure: '',
+                          speed: ''
+                        };
+                        
+                        return (
+                          <div key={sizeIndex} className="bg-purple-50 rounded-lg p-6 border border-purple-200">
+                            <h4 className="text-md font-medium text-purple-900 mb-4">
+                              Attributes for Size: {sizeDesc.size}
+                            </h4>
+                            
+                            {/* Technical Specifications */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                               <div className="space-y-2">
                                 <label className="block text-sm font-medium text-gray-700">
-                                  Specification Size {index + 1} *
+                                  Material *
                                 </label>
                                 <input
                                   type="text"
-                                  placeholder="e.g., 12mm, 25mm, 1 inch"
-                                  value={spec.size}
-                                  onChange={(e) => handleTechnicalSpecChange(index, 'size', e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                  placeholder="e.g., Carbon, Ceramic, Silicon Carbide"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.material}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'material', e.target.value)}
                                   required
                                 />
                               </div>
                               <div className="space-y-2">
                                 <label className="block text-sm font-medium text-gray-700">
-                                  Specification Description {index + 1} *
+                                  Temperature Range *
                                 </label>
-                                <textarea
-                                  placeholder="Technical description for this specification"
-                                  rows={2}
-                                  value={spec.description}
-                                  onChange={(e) => handleTechnicalSpecChange(index, 'description', e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-none"
+                                <input
+                                  type="text"
+                                  placeholder="e.g., -20°C to +200°C"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.temperature}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'temperature', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Pressure Rating *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., 0-16 bar, 0-25 bar"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.pressure}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'pressure', e.target.value)}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  Speed Rating *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g., 0-3600 RPM"
+                                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                  value={currentAttr.speed}
+                                  onChange={(e) => handleMechanicalSealChange(sizeIndex, 'speed', e.target.value)}
                                   required
                                 />
                               </div>
                             </div>
-                            {technicalSpecs.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeTechnicalSpec(index)}
-                                className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                              >
-                                <XMarkIcon className="h-4 w-4" />
-                              </button>
-                            )}
+
+                            {/* Mechanical Seal Size/Description Variations */}
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h5 className="text-sm font-medium text-purple-800">
+                                    Mechanical Seal Specifications
+                                  </h5>
+                                  <p className="text-xs text-purple-600 mt-1">
+                                    Add technical specifications for this product size (e.g., D1, D3, D7 for dimensions)
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => addMechanicalSealSizeDescription(sizeIndex)}
+                                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                                >
+                                  <PlusIcon className="h-4 w-4 mr-1" />
+                                  Add Specification
+                                </button>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                {currentAttr.sizes.map((size, specIndex) => (
+                                  <div key={specIndex} className="relative bg-white rounded-lg p-4 border border-purple-200">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Mechanical Seal Size {specIndex + 1} *
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g., 12mm, 26mm, 24mm"
+                                          value={size}
+                                          onChange={(e) => handleMechanicalSealSizeDescriptionChange(sizeIndex, specIndex, 'size', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                          required
+                                        />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">
+                                          Mechanical Seal Description {specIndex + 1} *
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="e.g., D1, D3, D7, L(+-0.3)"
+                                          value={currentAttr.descriptions[specIndex] || ''}
+                                          onChange={(e) => handleMechanicalSealSizeDescriptionChange(sizeIndex, specIndex, 'description', e.target.value)}
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                                          required
+                                        />
+                                      </div>
+                                    </div>
+                                    {currentAttr.sizes.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeMechanicalSealSizeDescription(sizeIndex, specIndex)}
+                                        className="absolute top-2 right-2 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                      >
+                                        <XMarkIcon className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                
+                                {/* Show message when no specifications exist */}
+                                {currentAttr.sizes.length === 0 && (
+                                  <div className="bg-gray-100 rounded-lg p-6 text-center">
+                                    <p className="text-gray-500 text-sm">
+                                      No specifications added yet. Click "Add Specification" to get started.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
+
                   </div>
                 )}
 

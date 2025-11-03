@@ -1,42 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Search, User, ShoppingCart, MessageSquare, Menu, X } from "lucide-react";
+import { Search, User, ShoppingCart, Menu, X } from "lucide-react";
+import { AuthContext } from "../context/AuthContext";
+import axios from "axios";
 import logo from '../logo.jpg';
 
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useContext(AuthContext);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Check authentication status
-  useEffect(() => {
-    const checkAuthStatus = () => {
-      const token = localStorage.getItem('token');
-      setIsAuthenticated(!!token);
-    };
-
-    checkAuthStatus();
-    
-    // Listen for storage changes (login/logout in other tabs)
-    window.addEventListener('storage', checkAuthStatus);
-    
-    // Listen for custom auth events (for same-tab updates)
-    window.addEventListener('authStateChanged', checkAuthStatus);
-    
-    return () => {
-      window.removeEventListener('storage', checkAuthStatus);
-      window.removeEventListener('authStateChanged', checkAuthStatus);
-    };
-  }, []);
-
-  // Also check auth status when location changes (navigation)
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-  }, [location.pathname]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Redirect authenticated users away from auth pages
   useEffect(() => {
@@ -69,14 +48,8 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userData');
-    setIsAuthenticated(false);
+    logout();
     setShowProfileDropdown(false);
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new Event('authStateChanged'));
-    
     navigate('/');
   };
 
@@ -86,6 +59,66 @@ export default function Header() {
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
+  };
+
+  // Search functionality
+  const fetchSearchSuggestions = async (query) => {
+    if (query.length < 2) {
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      const response = await axios.get(`https://eme6.com/api/products`);
+      const allProducts = response.data;
+      
+      // Filter products based on search query
+      const filteredProducts = allProducts.filter(product =>
+        product.name.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 5); // Limit to 5 suggestions
+      
+      setSearchSuggestions(filteredProducts);
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error("Error fetching search suggestions:", error);
+      setSearchSuggestions([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearchInputChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    fetchSearchSuggestions(value);
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/product?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
+      setSearchOpen(false);
+    }
+  };
+
+  const handleSuggestionClick = (product) => {
+    navigate(`/product?search=${encodeURIComponent(product.name)}`);
+    setSearchQuery("");
+    setSearchSuggestions([]);
+    setShowSuggestions(false);
+    setSearchOpen(false);
+  };
+
+  const handleSearchBlur = () => {
+    // Delay hiding suggestions to allow clicking on them
+    setTimeout(() => {
+      setShowSuggestions(false);
+    }, 200);
   };
 
   return (
@@ -104,13 +137,44 @@ export default function Header() {
         {/* Desktop Search and Auth - Hidden on mobile */}
         <div className="hidden lg:flex items-center gap-4">
           {/* Search */}
-          <div className="flex items-center bg-white rounded-full px-3 py-1 w-48 xl:w-72">
-            <Search className="text-black w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="ml-2 flex-1 bg-transparent text-black outline-none text-sm"
-            />
+          <div className="relative">
+            <form onSubmit={handleSearchSubmit} className="flex items-center bg-white rounded-full px-4 py-0.5 w-56 xl:w-80 focus-within:outline-none focus-within:ring-0">
+              <button
+                type="submit"
+                className="text-black w-4 h-4 hover:text-gray-600 transition-colors cursor-pointer outline-none"
+                title="Search"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={handleSearchInputChange}
+                onBlur={handleSearchBlur}
+                onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
+                className="ml-2 flex-1 bg-transparent text-black outline-none focus:outline-none focus:ring-0 border-0 text-sm"
+              />
+              {searchLoading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 ml-2"></div>
+              )}
+            </form>
+            
+            {/* Search Suggestions Dropdown */}
+            {showSuggestions && searchSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-60 overflow-y-auto">
+                {searchSuggestions.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => handleSuggestionClick(product)}
+                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                    <div className="text-xs text-gray-500">Product ID: {product.id}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Authentication-based UI */}
@@ -125,14 +189,6 @@ export default function Header() {
                 <ShoppingCart className="w-5 h-5" />
               </button>
 
-              {/* Query Button */}
-              <button
-                onClick={() => navigate('/query')}
-                className="p-2 rounded-full hover:bg-red-600 transition"
-                title="Queries"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </button>
 
               {/* Profile Icon with Dropdown */}
               <div className="relative">
@@ -203,13 +259,6 @@ export default function Header() {
               >
                 <ShoppingCart className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => navigate('/query')}
-                className="p-2 rounded-full hover:bg-red-600 transition"
-                title="Queries"
-              >
-                <MessageSquare className="w-5 h-5" />
-              </button>
             </>
           )}
 
@@ -227,14 +276,45 @@ export default function Header() {
       {/* Mobile Search Bar */}
       {searchOpen && (
         <div className="lg:hidden px-4 pb-3">
-          <div className="flex items-center bg-white rounded-full px-3 py-2">
-            <Search className="text-black w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="ml-2 flex-1 bg-transparent text-black outline-none text-sm"
-              autoFocus
-            />
+          <div className="relative">
+            <form onSubmit={handleSearchSubmit} className="flex items-center bg-white rounded-full px-4 py-1 focus-within:outline-none focus-within:ring-0">
+              <button
+                type="submit"
+                className="text-black w-4 h-4 hover:text-gray-600 transition-colors cursor-pointer outline-none"
+                title="Search"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={handleSearchInputChange}
+                onBlur={handleSearchBlur}
+                onFocus={() => searchSuggestions.length > 0 && setShowSuggestions(true)}
+                className="ml-2 flex-1 bg-transparent text-black outline-none focus:outline-none focus:ring-0 border-0 text-sm"
+                autoFocus
+              />
+              {searchLoading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 ml-2"></div>
+              )}
+            </form>
+            
+            {/* Mobile Search Suggestions Dropdown */}
+            {showSuggestions && searchSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-60 overflow-y-auto">
+                {searchSuggestions.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => handleSuggestionClick(product)}
+                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                    <div className="text-xs text-gray-500">Product ID: {product.id}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -277,7 +357,7 @@ export default function Header() {
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-gray-900 border-t border-gray-700">
+        <div className="lg:hidden bg-gray-900 border-t border-gray-700 relative z-50">
           {/* Company Name - Mobile */}
           <div className="px-4 py-3 border-b border-gray-700">
             <span className="text-xs font-bold text-red-400">

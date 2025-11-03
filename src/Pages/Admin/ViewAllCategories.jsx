@@ -34,7 +34,7 @@ const ViewAllCategories = () => {
     try {
       setLoading(true);
       const adminToken = localStorage.getItem('adminToken');
-      const res = await axios.get("http://localhost:5000/api/categories", {
+      const res = await axios.get("https://eme6.com/api/categories", {
         headers: {
           Authorization: `Bearer ${adminToken}`
         }
@@ -44,7 +44,9 @@ const ViewAllCategories = () => {
       setCategories(res.data);
     } catch (err) {
       console.error("❌ Failed to fetch categories:", err);
-      toast.error("Failed to fetch categories");
+      toast.error("Failed to fetch categories", {
+        toastId: 'fetch-categories-error',
+      });
       
       if (err.response?.status === 401) {
         localStorage.removeItem('adminToken');
@@ -58,7 +60,7 @@ const ViewAllCategories = () => {
   const fetchProducts = async () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const res = await axios.get("http://localhost:5000/api/products", {
+      const res = await axios.get("https://eme6.com/api/products", {
         headers: {
           Authorization: `Bearer ${adminToken}`
         }
@@ -78,6 +80,18 @@ const ViewAllCategories = () => {
   useEffect(() => {
     fetchCategories();
     fetchProducts();
+    
+    // ✅ Listen for category updates to refresh automatically
+    const handleCategoryUpdate = () => {
+      console.log('🔄 Category updated, refreshing list...');
+      fetchCategories();
+    };
+    
+    window.addEventListener('categoryUpdated', handleCategoryUpdate);
+    
+    return () => {
+      window.removeEventListener('categoryUpdated', handleCategoryUpdate);
+    };
   }, []);
 
   const handleDeleteCategory = async (categoryId) => {
@@ -86,16 +100,20 @@ const ViewAllCategories = () => {
 
     try {
       const adminToken = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/categories/${categoryId}`, {
+      await axios.delete(`https://eme6.com/api/categories/${categoryId}`, {
         headers: {
           Authorization: `Bearer ${adminToken}`
         }
       });
-      toast.success("Category deleted successfully");
+      toast.success("Category deleted successfully", {
+        toastId: 'delete-success',
+      });
       fetchCategories();
     } catch (err) {
       console.error("❌ Failed to delete category:", err);
-      toast.error("Failed to delete category");
+      toast.error("Failed to delete category", {
+        toastId: 'delete-error',
+      });
       
       if (err.response?.status === 401) {
         localStorage.removeItem('adminToken');
@@ -159,7 +177,7 @@ const ViewAllCategories = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
         <span className="ml-3 text-gray-600">Loading categories...</span>
       </div>
     );
@@ -179,11 +197,11 @@ const ViewAllCategories = () => {
           <div className="flex items-center gap-4">
             <div className="bg-white px-4 py-2 rounded-lg shadow-sm border">
               <span className="text-sm text-gray-600">Total Categories: </span>
-              <span className="font-semibold text-purple-600">{categories.length}</span>
+              <span className="font-semibold text-red-600">{categories.length}</span>
             </div>
             <div className="bg-white px-4 py-2 rounded-lg shadow-sm border">
               <span className="text-sm text-gray-600">Total Products: </span>
-              <span className="font-semibold text-blue-600">{products.length}</span>
+              <span className="font-semibold text-red-600">{products.length}</span>
             </div>
           </div>
         </div>
@@ -200,14 +218,14 @@ const ViewAllCategories = () => {
               placeholder="Search categories..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 input-search"
             />
           </div>
           
           {/* Add Category Button */}
           <Link
             to="/admin/add-category"
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
           >
             <PlusIcon className="h-5 w-5" />
             Add Category
@@ -219,7 +237,7 @@ const ViewAllCategories = () => {
       <div className="bg-white rounded-xl shadow-sm border">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <Squares2X2Icon className="h-5 w-5 text-purple-600" />
+            <Squares2X2Icon className="h-5 w-5 text-red-600" />
             <h2 className="text-xl font-semibold text-gray-800">All Categories</h2>
             <span className="text-sm text-gray-500">({filteredCategories.length})</span>
           </div>
@@ -254,16 +272,16 @@ const ViewAllCategories = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="p-2 bg-purple-100 rounded-lg mr-3">
-                            <Squares2X2Icon className="h-4 w-4 text-purple-600" />
+                          <div className="p-2 bg-red-100 rounded-lg mr-3">
+                            <Squares2X2Icon className="h-4 w-4 text-red-600" />
                           </div>
                           <span className="text-sm font-medium text-gray-900">{category.name}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <CubeIcon className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium text-blue-600">{categoryProducts.length}</span>
+                          <CubeIcon className="h-4 w-4 text-red-500" />
+                          <span className="text-sm font-medium text-red-600">{categoryProducts.length}</span>
                           <span className="text-xs text-gray-500">products</span>
                         </div>
                       </td>
@@ -278,14 +296,14 @@ const ViewAllCategories = () => {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleViewCategory(category)}
-                            className="text-purple-600 hover:text-purple-900 p-1 rounded transition-colors"
+                            className="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
                             title="View Details"
                           >
                             <EyeIcon className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => navigate(`/admin/update-category/${category.id}`)}
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors"
+                            className="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
                             title="Edit Category"
                           >
                             <PencilIcon className="h-4 w-4" />
@@ -315,8 +333,8 @@ const ViewAllCategories = () => {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Squares2X2Icon className="h-6 w-6 text-purple-600" />
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <Squares2X2Icon className="h-6 w-6 text-red-600" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-800">
                     {selectedCategory.name}
@@ -355,7 +373,7 @@ const ViewAllCategories = () => {
                     </div>
                     <div>
                       <span className="text-sm text-gray-600">Products in Category:</span>
-                      <p className="font-semibold text-blue-600">{getProductsInCategory(selectedCategory.id).length}</p>
+                      <p className="font-semibold text-red-600">{getProductsInCategory(selectedCategory.id).length}</p>
                     </div>
                   </div>
                 </div>
@@ -370,7 +388,7 @@ const ViewAllCategories = () => {
                         {images.map((imagePath, index) => (
                           <img
                             key={index}
-                            src={imagePath.startsWith('http') ? imagePath : `http://localhost:5000${imagePath}`}
+                            src={imagePath.startsWith('http') ? imagePath : `https://eme6.com${imagePath}`}
                             alt={`${selectedCategory.name} ${index + 1}`}
                             className="w-full h-32 object-cover rounded-lg border"
                             onError={(e) => {
@@ -398,7 +416,7 @@ const ViewAllCategories = () => {
                             <div className="flex items-center gap-3">
                               {productImages.length > 0 ? (
                                 <img
-                                  src={productImages[0].startsWith('http') ? productImages[0] : `http://localhost:5000${productImages[0]}`}
+                                  src={productImages[0].startsWith('http') ? productImages[0] : `https://eme6.com${productImages[0]}`}
                                   alt={product.name}
                                   className="w-12 h-12 object-cover rounded-lg"
                                   onError={(e) => {
@@ -451,7 +469,7 @@ const ViewAllCategories = () => {
                   setShowModal(false);
                   navigate(`/admin/update-category/${selectedCategory.id}`);
                 }}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Edit Category
               </button>

@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const response = await axios.get('http://localhost:5000/api/auth/me', {
+          const response = await axios.get('https://eme6.com/api/auth/me', {
             headers: { Authorization: `Bearer ${token}` }
           });
           setUser({ ...response.data, role: 'customer' });
@@ -21,6 +21,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('token');
           setUser(null);
         }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };

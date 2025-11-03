@@ -17,7 +17,7 @@ const AdminRoute = ({ children }) => {
       }
 
       try {
-        await axios.get("http://localhost:5000/api/auth/me", {
+        await axios.get("https://eme6.com/api/admin/dashboard/stats", {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 8000 // 8 second timeout
         });

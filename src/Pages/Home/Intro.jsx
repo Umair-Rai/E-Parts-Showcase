@@ -64,18 +64,28 @@ export default function Intro() {
           transition={{ delay: 0.5, duration: 0.6 }}
           className="md:w-1/2 w-full flex justify-center relative"
         >
-          <div className="relative">
+          <div 
+            className="relative cursor-pointer group transition-transform duration-300 hover:scale-105"
+            onClick={() => {
+              const phoneNumber = "+966535276218";
+              const message = "Hello! I'm interested in your electro-mechanical services.";
+              const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+              window.open(whatsappUrl, '_blank');
+            }}
+            title="Click to contact us on WhatsApp"
+          >
             <img
-              src="/home/qr.jpg"
-              alt="Electro Mechanical Overview"
-              className="rounded-2xl shadow-2xl w-full max-w-md md:max-w-lg object-cover border-2 border-red-600/20"
+              src="/home/qr.png"
+              alt="Electro Mechanical Overview - Click to contact us on WhatsApp"
+              className="rounded-2xl shadow-2xl w-full max-w-xs md:max-w-sm object-cover border-2 border-red-600/20 group-hover:border-red-600/40 transition-all duration-300"
             />
             {/* Image overlay effect */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/20 to-transparent"></div>
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-black/20 to-transparent group-hover:from-black/10 transition-all duration-300"></div>
+            
             
             {/* Decorative elements */}
-            <div className="absolute -top-4 -right-4 w-8 h-8 bg-red-600 rounded-full opacity-80"></div>
-            <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-red-600 rounded-full opacity-60"></div>
+            <div className="absolute -top-4 -right-4 w-8 h-8 bg-red-600 rounded-full opacity-80 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-red-600 rounded-full opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
           </div>
         </motion.div>
       </div>

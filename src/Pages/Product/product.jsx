@@ -11,7 +11,8 @@ import {
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { openWhatsAppForProduct } from '../../utils/whatsappUtils';
 
 const ProductCatalog = () => {
   const [products, setProducts] = useState([]);
@@ -23,17 +24,20 @@ const ProductCatalog = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [imageLoadErrors, setImageLoadErrors] = useState({});
+  const [searchParams] = useSearchParams();
 
   // Fetch products from backend
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/products");
+      const response = await axios.get("https://eme6.com/api/products");
       setProducts(response.data);
       setFilteredProducts(response.data);
     } catch (error) {
       console.error("❌ Failed to fetch products:", error);
-      toast.error("Failed to load products");
+      // ✅ No toast error - silently handle failure
+      setProducts([]);
+      setFilteredProducts([]);
     } finally {
       setLoading(false);
     }
@@ -42,11 +46,12 @@ const ProductCatalog = () => {
   // Fetch categories from backend
   const fetchCategories = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/categories");
+      const response = await axios.get("https://eme6.com/api/categories");
       setCategories(response.data);
     } catch (error) {
       console.error("❌ Failed to fetch categories:", error);
-      toast.error("Failed to load categories");
+      // ✅ No toast error - silently handle failure
+      setCategories([]);
     }
   };
 
@@ -88,7 +93,7 @@ const ProductCatalog = () => {
         return imagePath;
       }
       const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-      return `http://localhost:5000${cleanPath}`;
+      return `https://eme6.com${cleanPath}`;
     });
 
     return constructedUrls;
@@ -126,6 +131,27 @@ const ProductCatalog = () => {
     fetchProducts();
     fetchCategories();
   }, []);
+
+  // Handle search query and category from URL parameters
+  useEffect(() => {
+    const searchQuery = searchParams.get('search');
+    const categoryQuery = searchParams.get('category');
+    
+    if (searchQuery) {
+      setSearchTerm(searchQuery);
+    } else {
+      // Reset search term when no search parameter in URL (page reload)
+      setSearchTerm("");
+    }
+    
+    if (categoryQuery) {
+      setSelectedCategory(categoryQuery);
+    } else {
+      // Reset category filter when no category parameter in URL
+      setSelectedCategory("");
+    }
+  }, [searchParams]);
+
 
   const handleQuickView = (product) => {
     setSelectedProduct(product);
@@ -202,7 +228,7 @@ const ProductCatalog = () => {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-black border border-gray-600 rounded-lg focus:ring-2 focus:ring-red-600 focus:border-transparent text-white placeholder-gray-400"
+                className="w-full pl-10 pr-4 py-3 bg-black border-0 rounded-lg focus:ring-0 focus:outline-none text-white placeholder-gray-400"
               />
             </div>
 
@@ -315,12 +341,16 @@ function ProductCard({ product, onQuickView, getCategoryName, getProductImages, 
               <img
                 src={productImages[0]}
                 alt={`${product.name} - Image 1`}
-                className="w-full h-full object-cover absolute inset-0 transition-all duration-700 ease-in-out transform group-hover:scale-110 opacity-100 group-hover:opacity-0"
+                className={`w-full h-full object-cover absolute inset-0 transition-all duration-700 ease-in-out transform ${
+                  productImages.length === 1 
+                    ? 'group-hover:scale-110' 
+                    : 'group-hover:scale-110 opacity-100 group-hover:opacity-0'
+                }`}
                 onError={() => handleImageError(product.id, 0, productImages[0])}
               />
             )}
             
-            {/* Secondary Image (if available) */}
+            {/* Secondary Image (only show if there are 2+ images) */}
             {productImages.length > 1 && !imageLoadErrors[`${product.id}-1`] && (
               <img
                 src={productImages[1]}
@@ -421,7 +451,7 @@ function ProductCard({ product, onQuickView, getCategoryName, getProductImages, 
           </div>
         )}
         
-        {/* Image count indicator */}
+        {/* Image count indicator - Only show if there are multiple images */}
         {productImages.length > 1 && (
           <div className="mt-3 flex items-center gap-1">
             <div className="flex gap-1">
@@ -448,6 +478,51 @@ function ProductCard({ product, onQuickView, getCategoryName, getProductImages, 
 function QuickViewModal({ product, onClose, getCategoryName, getProductImages, handleImageError, imageLoadErrors }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const productImages = getProductImages(product);
+
+  const handleContactUs = async () => {
+    try {
+      // Get user ID from localStorage or context
+      const token = localStorage.getItem('token');
+      if (!token) {
+        // ✅ No toast error - silently handle, just open WhatsApp
+        const productData = {
+          type: "Contact Us - Guest",
+          product: {
+            ...product,
+            category_name: getCategoryName(product.category_id)
+          },
+          size: null,
+          quantity: 1
+        };
+        await openWhatsAppForProduct(productData);
+        return;
+      }
+      
+      // Decode token to get user ID (simplified approach)
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+      const userId = tokenPayload.id;
+      
+      const productData = {
+        userId: userId,
+        type: "Contact Us",
+        product: {
+          ...product,
+          category_name: getCategoryName(product.category_id)
+        },
+        size: null,
+        quantity: 1
+      };
+      
+      await openWhatsAppForProduct(productData);
+      // ✅ Keep success toast - positive feedback is good
+      toast.success("Contact request sent to WhatsApp!", {
+        toastId: 'contact-success',
+      });
+    } catch (error) {
+      console.error('Failed to send contact request:', error);
+      // ✅ No toast error - silently handle failure
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -549,7 +624,10 @@ function QuickViewModal({ product, onClose, getCategoryName, getProductImages, h
                 <button className="flex-1 bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-all font-semibold">
                   Add to Cart
                 </button>
-                <button className="px-6 py-3 border border-gray-600 rounded-lg hover:bg-gray-800 transition-all text-gray-300 hover:text-white">
+                <button 
+                  onClick={handleContactUs}
+                  className="px-6 py-3 border border-gray-600 rounded-lg hover:bg-gray-800 transition-all text-gray-300 hover:text-white"
+                >
                   Contact Us
                 </button>
               </div>
@@ -557,6 +635,7 @@ function QuickViewModal({ product, onClose, getCategoryName, getProductImages, h
           </div>
         </div>
       </div>
+
     </div>
   );
 }

@@ -14,14 +14,15 @@ export default function FeaturedProducts() {
   const fetchFeaturedProducts = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/products");
+      const response = await axios.get("https://eme6.com/api/products");
       // Get first 8 products as featured products
       const featuredProducts = response.data.slice(0, 8);
       console.log('📊 Fetched featured products:', featuredProducts);
       setProducts(featuredProducts);
     } catch (error) {
       console.error("❌ Failed to fetch products:", error);
-      toast.error("Failed to load featured products. Please try again later.");
+      // ✅ No toast error - silently handle failure
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,7 @@ export default function FeaturedProducts() {
         return imagePath;
       }
       const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-      return `http://localhost:5000${cleanPath}`;
+      return `https://eme6.com${cleanPath}`;
     });
 
     return constructedUrls;

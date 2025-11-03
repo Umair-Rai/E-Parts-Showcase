@@ -34,11 +34,33 @@ const ProductDetail = () => {
   const [imageLoadErrors, setImageLoadErrors] = useState({});
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
-  const [inquiryMessage, setInquiryMessage] = useState("");
-  const [showInquiryModal, setShowInquiryModal] = useState(false);
   // Add mechanical seal attributes state
   const [mechanicalSealAttributes, setMechanicalSealAttributes] = useState(null);
   const [isMechanicalSeal, setIsMechanicalSeal] = useState(false);
+
+  // Check if product category is mechanical seal
+  const checkIfMechanicalSeal = useCallback((categoryId) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category?.special_category === true || category?.name?.toLowerCase() === 'mechanical seals';
+  }, [categories]);
+
+  // Fetch mechanical seal attributes for a specific product
+  const fetchMechanicalSealAttributes = useCallback(async (productId) => {
+    try {
+      console.log('Fetching mechanical seal attributes for product:', productId);
+      
+      const response = await axios.get(
+        `https://eme6.com/api/mechanical-seal-attributes/${productId}`
+      );
+      
+      console.log('Mechanical seal attributes response:', response.data);
+      setMechanicalSealAttributes(response.data);
+    } catch (error) {
+      console.log('Error fetching mechanical seal attributes:', error.response?.data || error.message);
+      // Set to null if attributes are not found, but don't prevent display
+      setMechanicalSealAttributes(null);
+    }
+  }, []);
 
   // Add these functions INSIDE the component
   const handleSizeSelection = (size, index) => {
@@ -60,52 +82,13 @@ const ProductDetail = () => {
     return product?.description || "No description available";
   };
 
-  // Check if product is mechanical seal
-  const checkIfMechanicalSeal = useCallback((categoryId) => {
-    const category = categories.find(cat => String(cat.id) === String(categoryId));
-    console.log('Checking category:', category);
-    console.log('Category ID:', categoryId);
-    
-    if (!category) {
-      console.log('No category found for ID:', categoryId);
-      return false;
-    }
-    
-    const categoryName = category.name.toLowerCase();
-    console.log('Category name (lowercase):', categoryName);
-    
-    // Check for exact match with "Mechanical Seals"
-    const isMechanical = categoryName === 'mechanical seals' || 
-                    categoryName.includes('mechanical seal');
-    
-    console.log('Is mechanical seal?', isMechanical);
-    return isMechanical;
-  }, [categories]);
-  
-  // Fetch mechanical seal attributes without authentication
-  const fetchMechanicalSealAttributes = async (productId) => {
-    try {
-      console.log('Fetching mechanical seal attributes for product:', productId);
-      
-      const response = await axios.get(
-        `http://localhost:5000/api/mechanical-seal-attributes/${productId}`
-      );
-      
-      console.log('Mechanical seal attributes response:', response.data);
-      setMechanicalSealAttributes(response.data);
-    } catch (error) {
-      console.log('Error fetching mechanical seal attributes:', error.response?.data || error.message);
-      // Set to null if attributes are not found, but don't prevent display
-      setMechanicalSealAttributes(null);
-    }
-  };
 
   // Fetch product details
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:5000/api/products/${id}`);
+        const response = await axios.get(`https://eme6.com/api/products/${id}`);
         const productData = response.data;
         setProduct(productData);
         
@@ -125,7 +108,7 @@ const ProductDetail = () => {
 
     const fetchCategories = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/categories");
+        const response = await axios.get("https://eme6.com/api/categories");
         setCategories(response.data);
       } catch (error) {
         console.error("Failed to fetch categories:", error);
@@ -140,21 +123,21 @@ const ProductDetail = () => {
 
   // Add new useEffect to check for mechanical seal and fetch attributes
   useEffect(() => {
-    console.log('Checking mechanical seal conditions:');
-    console.log('Product:', product);
-    console.log('Categories length:', categories.length);
-    console.log('Product category_id:', product?.category_id);
+    console.log('🔍 Checking mechanical seal conditions:');
+    console.log('📦 Product:', product);
+    console.log('📂 Categories length:', categories.length);
+    console.log('🏷️ Product category_id:', product?.category_id);
     
     if (product && categories.length > 0) {
       const isMechSeal = checkIfMechanicalSeal(product.category_id);
-      console.log('Setting isMechanicalSeal to:', isMechSeal);
+      console.log('⚙️ Setting isMechanicalSeal to:', isMechSeal);
       setIsMechanicalSeal(isMechSeal);
       
       if (isMechSeal) {
-        console.log('Product is mechanical seal, fetching attributes...');
+        console.log('🔧 Product is mechanical seal, fetching attributes...');
         fetchMechanicalSealAttributes(product.id);
       } else {
-        console.log('Product is not a mechanical seal');
+        console.log('📝 Product is not a mechanical seal');
       }
     }
   }, [product, categories, checkIfMechanicalSeal, fetchMechanicalSealAttributes]);
@@ -194,7 +177,7 @@ const ProductDetail = () => {
         return imagePath;
       }
       const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-      return `http://localhost:5000${cleanPath}`;
+      return `https://eme6.com${cleanPath}`;
     });
   };
 
@@ -242,7 +225,7 @@ const ProductDetail = () => {
       };
       
       await axios.post(
-        'http://localhost:5000/api/cart/add',
+        'https://eme6.com/api/cart/add',
         cartData,
         {
           headers: {
@@ -282,23 +265,6 @@ const ProductDetail = () => {
     toast.success("Redirecting to checkout...");
   };
 
-  // Handle inquiry
-  const handleInquiry = () => {
-    setShowInquiryModal(true);
-  };
-
-  // Submit inquiry
-  const submitInquiry = () => {
-    if (!inquiryMessage.trim()) {
-      toast.warning("Please enter your inquiry message");
-      return;
-    }
-    
-    // Submit inquiry logic here
-    toast.success("Inquiry submitted successfully! We'll get back to you soon.");
-    setShowInquiryModal(false);
-    setInquiryMessage("");
-  };
 
   if (loading) {
     return (
@@ -475,10 +441,13 @@ const ProductDetail = () => {
               </div>
 
             {/* Size hint text */}
-            {product.sizes && product.sizes.length > 0 && product.descriptions && product.descriptions.length > 1 && (
+            {product.sizes && product.sizes.length > 0 && (
               <div>
                 <p className="text-sm text-gray-400">
-                  💡 Click on different sizes to see specific descriptions
+                  💡 {isMechanicalSeal 
+                    ? 'Select different sizes to see specific technical specifications' 
+                    : 'Click on different sizes to see specific descriptions'
+                  }
                 </p>
               </div>
             )}
@@ -492,56 +461,93 @@ const ProductDetail = () => {
             </div>
 
             {/* Mechanical Seal Attributes */}
-            {isMechanicalSeal && mechanicalSealAttributes && (
+            {isMechanicalSeal && (
               <div>
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                  ⚙️ Mechanical Seal Specifications
+                  ⚙️ Technical Specifications
                 </h3>
                 
-                {/* First div: Current specifications */}
-                <div className="bg-gray-800 rounded-lg p-6 space-y-4 mb-4">
-                                  {mechanicalSealAttributes.sizes && mechanicalSealAttributes.descriptions && (
-                  <div className="bg-gray-800 rounded-lg p-6">
-                    <h4 className="text-md font-semibold mb-4 text-white">Descriptions</h4>
-                    <div className="space-y-3">
-                      {mechanicalSealAttributes.sizes.map((size, index) => (
-                        <div key={index}>
-                          <p className="text-gray-300">
-                            <span className="font-medium text-white">
-                              {mechanicalSealAttributes.descriptions[index] || 'No description available'}
-                            </span>
-                            : <span className="text-red-400 font-semibold">{size}</span>
-                          </p>
+                {/* Display attributes for the selected product size */}
+                {(() => {
+                  // Show loading state if attributes are still being fetched
+                  if (mechanicalSealAttributes === null) {
+                    return (
+                      <div className="bg-gray-800 rounded-lg p-6">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mr-3"></div>
+                          <p className="text-gray-400">Loading technical specifications...</p>
                         </div>
-                      ))}
+                      </div>
+                    );
+                  }
+                  
+                  // Get attributes for the currently selected size
+                  const currentSizeAttr = mechanicalSealAttributes[selectedSize];
+                  
+                  if (!currentSizeAttr) {
+                    return (
+                      <div className="bg-gray-800 rounded-lg p-6">
+                        <p className="text-gray-400 text-center">
+                          No technical specifications available for size: {selectedSize}
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  console.log('🔧 Rendering mechanical seal attributes for size:', selectedSize, currentSizeAttr);
+                  
+                  return (
+                    <div className="space-y-6">
+                      {/* Mechanical Seal Specifications */}
+                      {currentSizeAttr.sizes && currentSizeAttr.descriptions && currentSizeAttr.sizes.length > 0 && (
+                        <div className="bg-gray-800 rounded-lg p-6">
+                          <h4 className="text-md font-semibold mb-4 text-blue-400">
+                            Specifications for {selectedSize}
+                          </h4>
+                          <div className="space-y-3">
+                            {currentSizeAttr.sizes.map((size, index) => (
+                              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-700 last:border-b-0">
+                                <span className="text-gray-300 font-medium">
+                                  {currentSizeAttr.descriptions[index] || 'Specification'}
+                                </span>
+                                <span className="text-red-400 font-semibold">{size}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Technical Attributes */}
+                      <div className="bg-gray-800 rounded-lg p-6">
+                        <h4 className="text-md font-semibold mb-4 text-green-400">
+                          Technical Attributes
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div>
+                              <span className="text-sm text-gray-400">Material:</span>
+                              <p className="font-semibold text-white">{currentSizeAttr.material}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-gray-400">Temperature:</span>
+                              <p className="font-semibold text-white">{currentSizeAttr.temperature}</p>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <span className="text-sm text-gray-400">Pressure:</span>
+                              <p className="font-semibold text-white">{currentSizeAttr.pressure}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm text-gray-400">Speed:</span>
+                              <p className="font-semibold text-white">{currentSizeAttr.speed}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-400">Material:</span>
-                        <p className="font-semibold text-white">{mechanicalSealAttributes.material}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-400">Temperature:</span>
-                        <p className="font-semibold text-white">{mechanicalSealAttributes.temperature}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm text-gray-400">Pressure:</span>
-                        <p className="font-semibold text-white">{mechanicalSealAttributes.pressure}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-400">Speed:</span>
-                        <p className="font-semibold text-white">{mechanicalSealAttributes.speed}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-
+                  );
+                })()}
               </div>
             )}
 
@@ -635,35 +641,6 @@ const ProductDetail = () => {
         </div>
       )}
 
-      {/* Inquiry Modal */}
-      {showInquiryModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Send Product Inquiry</h3>
-            <p className="text-gray-400 mb-4">Ask us anything about {product.name}</p>
-            <textarea
-              value={inquiryMessage}
-              onChange={(e) => setInquiryMessage(e.target.value)}
-              placeholder="Enter your message here..."
-              className="w-full h-32 bg-gray-700 border border-gray-600 rounded-lg p-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:border-red-500"
-            />
-            <div className="flex space-x-4 mt-4">
-              <button
-                onClick={submitInquiry}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-              >
-                Send Inquiry
-              </button>
-              <button
-                onClick={() => setShowInquiryModal(false)}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

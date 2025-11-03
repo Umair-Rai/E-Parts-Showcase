@@ -100,7 +100,7 @@ const AddCategory = () => {
       });
       
       const response = await axios.post(
-        'http://localhost:5000/api/categories',
+        'https://eme6.com/api/categories',
         formDataToSend,
         {
           headers: {

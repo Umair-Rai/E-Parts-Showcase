@@ -45,7 +45,7 @@ const CustomerManagement = () => {
           return;
         }
 
-        const response = await axios.get('http://localhost:5000/api/customers', {
+        const response = await axios.get('https://eme6.com/api/customers', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -70,7 +70,7 @@ const CustomerManagement = () => {
     try {
       const token = localStorage.getItem('adminToken');
       
-      await axios.delete(`http://localhost:5000/api/customers/${customerId}`, {
+      await axios.delete(`https://eme6.com/api/customers/${customerId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -93,7 +93,7 @@ const CustomerManagement = () => {
       const token = localStorage.getItem('adminToken');
       
       const response = await axios.put(
-        `http://localhost:5000/api/customers/${editingCustomer.id}`,
+        `https://eme6.com/api/customers/${editingCustomer.id}`,
         editForm,
         {
           headers: {
@@ -172,7 +172,7 @@ const CustomerManagement = () => {
       
       await Promise.all(
         selectedCustomers.map(customerId => 
-          axios.delete(`http://localhost:5000/api/customers/${customerId}`, {
+          axios.delete(`https://eme6.com/api/customers/${customerId}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -236,7 +236,7 @@ const CustomerManagement = () => {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
           <span className="ml-3 text-gray-600">Loading customers...</span>
         </div>
       </div>
@@ -299,8 +299,8 @@ const CustomerManagement = () => {
               <p className="text-sm font-medium text-gray-600">Total Customers</p>
               <p className="text-2xl font-bold text-gray-900">{customers.length}</p>
             </div>
-            <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <UsersIcon className="h-6 w-6 text-blue-600" />
+            <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
+              <UsersIcon className="h-6 w-6 text-red-600" />
             </div>
           </div>
         </div>
@@ -318,7 +318,7 @@ const CustomerManagement = () => {
                   placeholder="Search customers by name, email, or phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full"
+                  className="pl-10 w-full input-search"
                 />
               </div>
             </div>
@@ -359,7 +359,7 @@ const CustomerManagement = () => {
                     type="checkbox"
                     checked={selectedCustomers.length === currentCustomers.length && currentCustomers.length > 0}
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                   />
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -387,7 +387,7 @@ const CustomerManagement = () => {
                       type="checkbox"
                       checked={selectedCustomers.includes(customer.id)}
                       onChange={(e) => handleSelectCustomer(customer.id, e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -406,7 +406,7 @@ const CustomerManagement = () => {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => openViewModal(customer)}
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded"
+                        className="text-red-600 hover:text-red-900 p-1 rounded"
                         title="View Details"
                       >
                         <EyeIcon className="h-4 w-4" />
@@ -558,7 +558,7 @@ const CustomerManagement = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
                 >
                   Update Customer
                 </Button>
