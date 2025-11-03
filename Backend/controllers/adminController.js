@@ -5,21 +5,21 @@ const jwt = require('jsonwebtoken');
 
 // Get all admins
 const getAllAdmins = asyncHandler(async (req, res) => {
-  const result = await pool.query('SELECT id, name, email, role FROM admin');
-  res.json(result.rows);
+  const result = await pool.execute('SELECT id, name, email, role FROM admin');
+  res.json(result[0]);
 });
 
 // Get admin by ID
 const getAdminById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const result = await pool.query('SELECT id, name, email, role FROM admin WHERE id = $1', [id]);
+  const result = await pool.execute('SELECT id, name, email, role FROM admin WHERE id = ?', [id]);
 
-  if (result.rows.length === 0) {
+  if (result[0].length === 0) {
     res.status(404);
     throw new Error('Admin not found');
   }
 
-  res.json(result.rows[0]);
+  res.json(result[0][0]);
 });
 
 // Update admin
@@ -29,23 +29,22 @@ const updateAdmin = asyncHandler(async (req, res) => {
 
   const fields = [];
   const values = [];
-  let idx = 1;
 
   if (name) {
-    fields.push(`name = $${idx++}`);
+    fields.push(`name = ?`);
     values.push(name);
   }
   if (email) {
-    fields.push(`email = $${idx++}`);
+    fields.push(`email = ?`);
     values.push(email);
   }
   if (password) {
     const hashedPassword = await bcrypt.hash(password, 10);
-    fields.push(`password = $${idx++}`);
+    fields.push(`password = ?`);
     values.push(hashedPassword);
   }
   if (role) {
-    fields.push(`role = $${idx++}`);
+    fields.push(`role = ?`);
     values.push(role);
   }
 
@@ -56,21 +55,23 @@ const updateAdmin = asyncHandler(async (req, res) => {
 
   values.push(id);
 
-  const query = `UPDATE admin SET ${fields.join(', ')} WHERE id = $${idx} RETURNING id, name, email, role`;
-  const result = await pool.query(query, values);
+  const query = `UPDATE admin SET ${fields.join(', ')} WHERE id = ?`;
+  const result = await pool.execute(query, values);
 
-  if (result.rows.length === 0) {
+  if (result[0].affectedRows === 0) {
     res.status(404);
     throw new Error('Admin not found');
   }
 
-  res.json(result.rows[0]);
+  // Get the updated admin
+  const updatedAdmin = await pool.execute('SELECT id, name, email, role FROM admin WHERE id = ?', [id]);
+  res.json(updatedAdmin[0][0]);
 });
 
 // Delete admin
 const deleteAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  await pool.query('DELETE FROM admin WHERE id = $1', [id]);
+  await pool.execute('DELETE FROM admin WHERE id = ?', [id]);
   res.json({ message: 'Admin deleted successfully' });
 });
 
@@ -78,8 +79,8 @@ const deleteAdmin = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const result = await pool.query('SELECT * FROM admin WHERE email = $1', [email]);
-  const admin = result.rows[0];
+  const result = await pool.execute('SELECT * FROM admin WHERE email = ?', [email]);
+  const admin = result[0][0];
 
   if (!admin) {
     res.status(401);
@@ -104,10 +105,43 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
+// Get dashboard statistics
+const getDashboardStats = asyncHandler(async (req, res) => {
+  try {
+    // Get total counts
+    const [
+      productsResult,
+      customersResult,
+      categoriesResult
+    ] = await Promise.all([
+      // Total products
+      pool.execute('SELECT COUNT(*) as count FROM product'),
+      
+      // Total customers
+      pool.execute('SELECT COUNT(*) as count FROM customer'),
+      
+      // Total categories
+      pool.execute('SELECT COUNT(*) as count FROM category')
+    ]);
+
+    const dashboardData = {
+      totalProducts: parseInt(productsResult[0][0].count),
+      totalCustomers: parseInt(customersResult[0][0].count),
+      totalCategories: parseInt(categoriesResult[0][0].count)
+    };
+
+    res.json(dashboardData);
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ message: 'Failed to fetch dashboard statistics' });
+  }
+});
+
 module.exports = {
   getAllAdmins,
   getAdminById,
   updateAdmin,
   deleteAdmin,
-  login, // <-- make sure login is exported
+  login,
+  getDashboardStats,
 };

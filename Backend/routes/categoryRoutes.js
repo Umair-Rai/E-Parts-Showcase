@@ -4,6 +4,7 @@ const { body, param } = require('express-validator');
 
 const categoryController = require('../controllers/categoryController');
 const { requireAuth } = require('../middleware/authMiddleware');
+const { requireRole } = require('../middleware/rbacMiddleware');
 const { validateRequest } = require('../middleware/validate');
 const { uploadCategoryImages, handleUploadError } = require('../middleware/uploadMiddleware');
 
@@ -16,10 +17,11 @@ router.get(
   categoryController.getCategoryById
 );
 
-// Protected routes (authentication required)
+// Protected routes (authentication required) - ADMIN ONLY
 router.post(
   '/',
   requireAuth,
+  requireRole('admin', 'super admin'),
   uploadCategoryImages,
   handleUploadError,
   [
@@ -33,6 +35,7 @@ router.post(
 router.put(
   '/:id',
   requireAuth,
+  requireRole('admin', 'super admin'),
   uploadCategoryImages,
   handleUploadError,
   [
@@ -47,6 +50,7 @@ router.put(
 router.delete(
   '/:id',
   requireAuth,
+  requireRole('admin', 'super admin'),
   [param('id').isInt(), validateRequest],
   categoryController.deleteCategory
 );

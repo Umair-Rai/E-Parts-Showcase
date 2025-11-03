@@ -1,12 +1,3 @@
--- Create ENUM type for order status
-CREATE TYPE order_status AS ENUM (
-    'PENDING',
-    'PROCESSING',
-    'SHIPPED',
-    'DELIVERED',
-    'CANCELLED'
-);
-
 -- Admin table
 CREATE TABLE admin (
     id SERIAL PRIMARY KEY,
@@ -48,6 +39,7 @@ CREATE TABLE product (
 CREATE TABLE mechanical_seal_attributes (
     id SERIAL PRIMARY KEY,
     product_id INT REFERENCES product(id) ON DELETE CASCADE,
+    product_size VARCHAR(50) NOT NULL, -- NEW ATTRIBUTE: tells which product size this record belongs to
     sizes TEXT[] NOT NULL,
     descriptions TEXT[] NOT NULL,
     material VARCHAR(255) NOT NULL,
@@ -56,23 +48,6 @@ CREATE TABLE mechanical_seal_attributes (
     speed VARCHAR(50) NOT NULL
 );
 
-
--- Orders table
-CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    customer_id INT REFERENCES customer(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status order_status DEFAULT 'PENDING',
-    admin_id INT REFERENCES admin(id) ON DELETE SET NULL
-);
-
--- Order items table
-CREATE TABLE order_item (
-    id SERIAL PRIMARY KEY,
-    order_id INT REFERENCES orders(id) ON DELETE CASCADE,
-    product_id INT REFERENCES product(id) ON DELETE CASCADE,
-    quantity INT NOT NULL
-);
 
 CREATE TABLE cart (
     id SERIAL PRIMARY KEY,

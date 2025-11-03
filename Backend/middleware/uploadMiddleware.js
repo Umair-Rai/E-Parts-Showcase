@@ -39,35 +39,49 @@ const categoryStorage = multer.diskStorage({
   }
 });
 
-// File filter for images only
+// ✅ SECURITY: Enhanced file filter with strict validation
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  // Only allow specific image types (removed webp for security - can contain scripts)
+  const allowedTypes = /jpeg|jpg|png|gif/;
+  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+  
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const mimetype = allowedMimes.includes(file.mimetype.toLowerCase());
 
+  // Additional security checks
+  // 1. Prevent path traversal in filename
+  if (file.originalname.includes('..') || file.originalname.includes('/') || file.originalname.includes('\\')) {
+    return cb(new Error('Invalid filename: Path traversal detected'));
+  }
+
+  // 2. Check file extension matches mime type
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
+    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif). File type mismatch detected.'));
   }
 };
 
-// Configure multer for products
+// ✅ SECURITY: Stricter limits and validation
 const productUpload = multer({
   storage: productStorage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit per file
-    files: 2 // Maximum 2 files
+    files: 2, // Maximum 2 files
+    fields: 10, // Limit number of non-file fields
+    fieldSize: 1 * 1024 * 1024 // 1MB per field value
   },
   fileFilter: fileFilter
 });
 
-// Configure multer for categories
+// ✅ SECURITY: Stricter limits and validation
 const categoryUpload = multer({
   storage: categoryStorage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit per file
-    files: 2 // Maximum 2 files
+    files: 2, // Maximum 2 files
+    fields: 10, // Limit number of non-file fields
+    fieldSize: 1 * 1024 * 1024 // 1MB per field value
   },
   fileFilter: fileFilter
 });
